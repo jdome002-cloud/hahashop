@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>HAHA SHOP — ขายไอดีฟีฟาย</title>
+  <meta property="og:title" content="HAHA SHOP — ขายไอดีฟีฟาย" />
+  <meta property="og:description" content="ร้านขายไอดีฟีฟาย · เติมเครดิตด้วยซองทรูมันนี่" />
+  <meta property="og:image" content="/img/cover.jpg" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:image" content="/img/cover.jpg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <div id="fx-layer" aria-hidden="true"><canvas id="fx-canvas"></canvas><div class="fx-glow"></div><div class="fx-dots"></div></div>
+  <header class="topbar">
+    <a class="topbar-brand" href="#/" data-nav="home">
+      <span class="brand-badge">HH</span>
+      <div class="brand-text">
+        <strong>HAHA SHOP</strong>
+        <small>ร้านขายไอดีฟีฟาย</small>
+      </div>
+    </a>
+    <div class="topbar-right">
+      <div class="balance-pill" id="balance-pill" hidden>
+        <span>เครดิต</span>
+        <strong id="balance-value">฿0</strong>
+      </div>
+      <a class="btn-contact" id="contact-btn" href="#" target="_blank" rel="noopener">ติดต่อแอดมิน</a>
+    </div>
+  </header>
+
+  <!-- HOME -->
+  <main class="page-view" id="view-home" data-view="home">
+    <div class="page-pad">
+      <section class="hero" aria-label="แบนเนอร์">
+        <div class="hero-art">
+          <img class="hero-cover" src="/img/cover.jpg" alt="HAHA SHOP" width="1200" height="806" decoding="async" fetchpriority="high" />
+        </div>
+      </section>
+      <div class="announce" role="status">
+        <span class="announce-label">ประกาศ</span>
+        <div class="marquee"><div class="marquee-track" id="announce-track">
+          <span>ยินดีต้อนรับสู่ HAHA SHOP</span>
+          <span>ยินดีต้อนรับสู่ HAHA SHOP</span>
+        </div></div>
+      </div>
+      
+    <section class="stats-grid" id="stats-grid" aria-label="สถิติร้าน">
+      <div class="stat-card" data-stat="users">
+        <div class="stat-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+        <div class="stat-text"><span class="stat-label">ผู้ใช้ทั้งหมด</span><div><strong class="stat-num" data-count="0">0</strong> <span class="stat-unit">คน</span></div></div>
+        <svg class="stat-wm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      </div>
+      <div class="stat-card" data-stat="products">
+        <div class="stat-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg></div>
+        <div class="stat-text"><span class="stat-label">สินค้าทั้งหมด</span><div><strong class="stat-num" data-count="0">0</strong> <span class="stat-unit">รายการ</span></div></div>
+        <svg class="stat-wm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+      </div>
+      <div class="stat-card" data-stat="stock">
+        <div class="stat-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg></div>
+        <div class="stat-text"><span class="stat-label">สต็อกพร้อมส่ง</span><div><strong class="stat-num" data-count="0">0</strong> <span class="stat-unit">ชิ้น</span></div></div>
+        <svg class="stat-wm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
+      </div>
+      <div class="stat-card" data-stat="completed">
+        <div class="stat-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg></div>
+        <div class="stat-text"><span class="stat-label">ทำรายการสำเร็จ</span><div><strong class="stat-num" data-count="0">0</strong> <span class="stat-unit">รายการ</span></div></div>
+        <svg class="stat-wm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg>
+      </div>
+    </section>
+
+    <section class="section">
+        <div class="section-head"><h2>เมนูแนะนำ</h2></div>
+              <div class="menu-grid">
+          <a class="menu-card" href="#/topup"><span class="menu-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect width="20" height="14" x="2" y="5" rx="2"/><path d="M2 10h20"/></svg></span><span>เติมเครดิต</span></a>
+          <a class="menu-card" href="#/products"><span class="menu-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg></span><span>สินค้าทั้งหมด</span></a>
+          <a class="menu-card" href="#/shop"><span class="menu-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m2 7 4.41-4.41A2 2 0 0 1 7.83 2h8.34a2 2 0 0 1 1.42.59L22 7"/><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><path d="M15 22v-4a2 2 0 0 0-2-2h-2a2 2 0 0 0-2 2v4"/><path d="M2 7h20"/></svg></span><span>ร้านค้า</span></a>
+          <a class="menu-card" href="#/auction"><span class="menu-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m14 13-8.381 8.38a1 1 0 0 1-3.001-3l8.384-8.381"/><path d="m16 16 6-6"/><path d="m8 8 6-6"/><path d="m9 7 8 8"/><path d="m21 11-8-8"/></svg></span><span>ประมูล</span></a>
+          <a class="menu-card" href="#/minigame"><span class="menu-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 12h4"/><path d="M8 10v4"/><path d="M15 13h.01"/><path d="M18 11h.01"/><rect width="20" height="12" x="2" y="6" rx="2"/></svg></span><span>มินิเกมส์</span></a>
+          <a class="menu-card" href="#/auth"><span class="menu-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span><span>บัญชีของฉัน</span></a>
+        </div>
+      </section>
+      <section class="section">
+        <div class="section-head"><h2>สินค้าแนะนำ</h2><span class="badge-demo">ข้อมูลตัวอย่าง</span></div>
+        <div class="product-grid" id="home-products"></div>
+      </section>
+      <p class="disclaimer">HAHA SHOP · สมาชิก/เครดิต/สั่งซื้อใช้งานได้บนเซิร์ฟเวอร์นี้ · รายการไอดีเป็นตัวอย่าง</p>
+    </div>
+  </main>
+
+  <!-- PRODUCTS -->
+  <main class="page-view" id="view-products" data-view="products" hidden>
+    <div class="page-pad">
+      <nav class="crumb">หน้าแรก &gt; สินค้าทั้งหมด</nav>
+      <h1 class="page-title">สินค้าทั้งหมด <span>ALL PRODUCTS</span></h1>
+      <div class="filter-box">
+        <input id="prod-q" type="search" placeholder="ค้นหาชื่อสินค้า / รหัส เช่น FF 6297" />
+        <div class="sort-row">
+          <button type="button" class="sort-btn active" data-sort="newest">ล่าสุด</button>
+          <button type="button" class="sort-btn" data-sort="price_asc" id="sort-price">↓ ราคาต่ำ-สูง</button>
+        </div>
+        <div class="price-row">
+          <input id="prod-min" type="number" min="0" placeholder="ต่ำสุด" />
+          <input id="prod-max" type="number" min="0" placeholder="สูงสุด" />
+          <button type="button" class="btn-search" id="prod-search">ค้นหา</button>
+        </div>
+      </div>
+      <div class="product-grid catalog" id="catalog-products"></div>
+    </div>
+  </main>
+
+  <!-- SHOP / CATEGORY -->
+  <main class="page-view" id="view-shop" data-view="shop" hidden>
+    <div class="page-pad">
+      <nav class="crumb">หน้าแรก &gt; หมวดหมู่ทั้งหมด</nav>
+      <h1 class="page-title">หมวดหมู่ <span>CATEGORY</span></h1>
+      <div class="cat-list" id="cat-list"></div>
+    </div>
+  </main>
+
+  <!-- TOPUP -->
+  <main class="page-view" id="view-topup" data-view="topup" hidden>
+    <div class="page-pad">
+      <nav class="crumb">หน้าแรก &gt; เติมเครดิต</nav>
+      <h1 class="page-title">เติมเครดิต <span>TOP-UP</span></h1>
+      <div class="info-card">
+        <h4>ซองอั่งเปา TrueMoney</h4>
+        <p class="muted">วางลิงก์ เช่น <code>https://gift.truemoney.com/campaign/?v=...</code></p>
+        <p class="muted" id="topup-need-login">ต้องเข้าสู่ระบบก่อนเติมเครดิต — <a href="#/auth">ไปหน้าเข้าสู่ระบบ</a></p>
+        <form id="topup-form" class="form" hidden>
+          <label>ลิงก์ซองอั่งเปา
+            <input name="link" id="topup-link" type="url" required placeholder="https://gift.truemoney.com/campaign/?v=XXXX" />
+          </label>
+          <p class="form-error" id="topup-error" hidden></p>
+          <p class="ok" id="topup-success" hidden></p>
+          <button class="btn-primary" id="topup-submit" type="submit">เติมเครดิตเลย</button>
+        </form>
+        <div id="topup-history" class="tx-list" hidden></div>
+      </div>
+    </div>
+  </main>
+
+  <!-- AUCTION -->
+  <main class="page-view" id="view-auction" data-view="auction" hidden>
+    <div class="page-pad">
+      <nav class="crumb">หน้าแรก &gt; ประมูล</nav>
+      <h1 class="page-title">ประมูล <span>AUCTION</span></h1>
+      <div id="auction-list" class="auction-list"></div>
+    </div>
+  </main>
+
+  <!-- MINIGAME -->
+  <main class="page-view" id="view-minigame" data-view="minigame" hidden>
+    <div class="page-pad">
+      <nav class="crumb">หน้าแรก &gt; มินิเกม</nav>
+      <h1 class="page-title">มินิเกม <span>MINI-GAME</span></h1>
+      <div id="minigame-list" class="mg-list"></div>
+      <div id="minigame-play" class="mg-play info-card" hidden>
+        <button type="button" class="linkish" id="mg-back">← กลับรายการ</button>
+        <div class="mg-play-art" id="mg-play-art"></div>
+        <h3 id="mg-play-title"></h3>
+        <p class="muted" id="mg-play-price"></p>
+        <button class="btn-primary" id="mg-play-btn" type="button">สุ่มเลย</button>
+        <div class="mg-result" id="mg-result" hidden>
+          <div class="mg-spin" id="mg-spin"><svg class="thumb-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 12h4"/><path d="M8 10v4"/><path d="M15 13h.01"/><path d="M18 11h.01"/><rect width="20" height="12" x="2" y="6" rx="2"/></svg> กำลังสุ่ม...</div>
+          <p id="mg-prize"></p>
+        </div>
+        <p class="form-error" id="mg-error" hidden></p>
+      </div>
+    </div>
+  </main>
+
+  <!-- AUTH / PROFILE -->
+  <main class="page-view" id="view-auth" data-view="auth" hidden>
+    <div class="page-pad">
+      <nav class="crumb">หน้าแรก &gt; บัญชี</nav>
+      <h1 class="page-title" id="auth-page-title">เข้าสู่ระบบ <span>LOGIN</span></h1>
+
+      <div id="auth-guest">
+        <div class="auth-tabs">
+          <button type="button" class="auth-tab active" data-auth-tab="login">เข้าสู่ระบบ</button>
+          <button type="button" class="auth-tab" data-auth-tab="signup">สมัครสมาชิก</button>
+        </div>
+        <div id="auth-login" class="info-card">
+          <form id="login-form" class="form">
+            <label>ชื่อผู้ใช้<input name="username" required minlength="3" maxlength="24" autocomplete="username" /></label>
+            <label>รหัสผ่าน<input name="password" type="password" required minlength="6" autocomplete="current-password" /></label>
+            <p class="form-error" id="login-error" hidden></p>
+            <button class="btn-primary" type="submit">เข้าสู่ระบบ</button>
+          </form>
+        </div>
+        <div id="auth-signup" class="info-card" hidden>
+          <form id="signup-form" class="form">
+            <label>ชื่อผู้ใช้<input name="username" required minlength="3" maxlength="24" pattern="[A-Za-z0-9_]{3,24}" /></label>
+            <label>รหัสผ่าน<input name="password" type="password" required minlength="6" autocomplete="new-password" /></label>
+            <label>ยืนยันรหัสผ่าน<input name="password2" type="password" required minlength="6" autocomplete="new-password" /></label>
+            <p class="form-error" id="signup-error" hidden></p>
+            <button class="btn-primary" type="submit">สมัครสมาชิก</button>
+          </form>
+        </div>
+      </div>
+
+      <div id="auth-profile" hidden>
+        <div class="info-card">
+          <h3 id="profile-username"></h3>
+          <p class="detail-price" id="profile-balance">฿0</p>
+          <a class="btn-primary" href="#/topup" style="display:block;text-align:center;text-decoration:none;margin-bottom:8px">เติมเครดิต</a>
+          <a class="btn-primary" id="admin-entry" href="#/admin" hidden style="display:none;text-align:center;text-decoration:none;margin-bottom:8px;background:linear-gradient(135deg,#b45309,#f59e0b)">หลังบ้าน</a>
+          <button class="btn-ghost" id="logout-btn" type="button">ออกจากระบบ</button>
+        </div>
+        <div class="info-card" style="margin-top:12px">
+          <h4>ประวัติการซื้อ</h4>
+          <div id="purchase-history" class="tx-list"></div>
+        </div>
+        <div class="info-card" style="margin-top:12px">
+          <h4>ประวัติเติมเครดิต</h4>
+          <div id="profile-topup-history" class="tx-list"></div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+    <nav class="bottom-nav" aria-label="เมนูหลัก">
+    <a class="nav-item" data-tab="home" href="#/"><span class="nav-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></svg></span><span>หน้าแรก</span></a>
+    <a class="nav-item" data-tab="topup" href="#/topup"><span class="nav-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect width="20" height="14" x="2" y="5" rx="2"/><path d="M2 10h20"/></svg></span><span>เติมเครดิต</span></a>
+    <a class="nav-item" data-tab="products" href="#/products"><span class="nav-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg></span><span>สินค้า</span></a>
+    <a class="nav-item" data-tab="shop" href="#/shop"><span class="nav-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m2 7 4.41-4.41A2 2 0 0 1 7.83 2h8.34a2 2 0 0 1 1.42.59L22 7"/><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><path d="M15 22v-4a2 2 0 0 0-2-2h-2a2 2 0 0 0-2 2v4"/><path d="M2 7h20"/></svg></span><span>ร้านค้า</span></a>
+    <a class="nav-item" data-tab="auction" href="#/auction"><span class="nav-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m14 13-8.381 8.38a1 1 0 0 1-3.001-3l8.384-8.381"/><path d="m16 16 6-6"/><path d="m8 8 6-6"/><path d="m9 7 8 8"/><path d="m21 11-8-8"/></svg></span><span>ประมูล</span></a>
+    <a class="nav-item" data-tab="minigame" href="#/minigame"><span class="nav-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 12h4"/><path d="M8 10v4"/><path d="M15 13h.01"/><path d="M18 11h.01"/><rect width="20" height="12" x="2" y="6" rx="2"/></svg></span><span>มินิเกม</span></a>
+    <a class="nav-item" data-tab="auth" href="#/auth"><span class="nav-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span><span id="nav-auth-label">เข้าสู่ระบบ</span></a>
+  </nav>
+
+  
+  <!-- ADMIN -->
+  <main class="page-view" id="view-admin" data-view="admin" hidden>
+    <div class="page-pad admin-pad">
+      <nav class="crumb">หน้าแรก &gt; หลังบ้าน</nav>
+      <h1 class="page-title">หลังบ้านแอดมิน <span>ADMIN</span></h1>
+      <p class="muted" id="admin-gate">กำลังตรวจสอบสิทธิ์...</p>
+      <div id="admin-panel" hidden>
+        <div class="admin-tabs">
+          <button type="button" class="admin-tab active" data-admin-tab="dash">ภาพรวม</button>
+          <button type="button" class="admin-tab" data-admin-tab="cover">รูปปก</button>
+          <button type="button" class="admin-tab" data-admin-tab="products">สินค้า</button>
+          <button type="button" class="admin-tab" data-admin-tab="categories">หมวดหมู่</button>
+          <button type="button" class="admin-tab" data-admin-tab="minigames">มินิเกม</button>
+          <button type="button" class="admin-tab" data-admin-tab="auctions">ประมูล</button>
+          <button type="button" class="admin-tab" data-admin-tab="settings">ตั้งค่า</button>
+          <button type="button" class="admin-tab" data-admin-tab="users">สมาชิก</button>
+          <button type="button" class="admin-tab" data-admin-tab="orders">ออเดอร์</button>
+        </div>
+        <div id="atab-dash" class="admin-section info-card"></div>
+        <div id="atab-cover" class="admin-section info-card" hidden>
+          <h4>เปลี่ยนรูปปกหน้าแรก</h4>
+          <img id="admin-cover-preview" src="/img/cover.jpg" alt="cover" style="width:100%;border-radius:12px;margin:8px 0" />
+          <form id="admin-cover-form" class="form">
+            <label>อัปโหลดรูปใหม่ (jpg/png/webp ≤5MB)
+              <input type="file" name="image" accept="image/jpeg,image/png,image/webp" required />
+            </label>
+            <button class="btn-primary" type="submit">บันทึกรูปปก</button>
+          </form>
+        </div>
+        <div id="atab-products" class="admin-section" hidden></div>
+        <div id="atab-categories" class="admin-section" hidden></div>
+        <div id="atab-minigames" class="admin-section" hidden></div>
+        <div id="atab-auctions" class="admin-section" hidden></div>
+        <div id="atab-settings" class="admin-section info-card" hidden>
+          <h4>ประกาศ / ติดต่อแอดมิน</h4>
+          <form id="admin-settings-form" class="form">
+            <label>ข้อความประกาศ<textarea name="announcement" rows="3"></textarea></label>
+            <label>ป้ายปุ่มติดต่อ<input name="contact_label" /></label>
+            <label>ลิงก์ติดต่อ (LINE/Facebook URL)<input name="contact_url" type="url" /></label>
+            <button class="btn-primary" type="submit">บันทึก</button>
+          </form>
+        </div>
+        <div id="atab-users" class="admin-section" hidden></div>
+        <div id="atab-orders" class="admin-section" hidden></div>
+      </div>
+    </div>
+  </main>
+
+  <div class="toast" id="toast" hidden></div>
+  <script src="/script.js"></script>
+</body>
+</html>

@@ -1,0 +1,37 @@
+# HAHA SHOP — Render Blueprint
+# Free plan has no persistent disk: SQLite + uploads reset on every deploy/restart.
+# For durable data, upgrade to a paid plan and uncomment the disk block below,
+# then set DATA_DIR and UPLOAD_DIR to paths under the mount.
+
+services:
+  - type: web
+    name: hahashop
+    runtime: node
+    plan: free
+    region: singapore
+    buildCommand: npm ci
+    startCommand: node server.js
+    healthCheckPath: /healthz
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: TRUEMONEY_MOBILE
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      # Optional: set to your public URL (e.g. https://hahashop.onrender.com)
+      # - key: PUBLIC_URL
+      #   sync: false
+
+      # --- Paid starter (or higher): uncomment disk + path env vars ---
+      # - key: DATA_DIR
+      #   value: /var/data
+      # - key: UPLOAD_DIR
+      #   value: /var/data/uploads
+
+    # disk:
+    #   name: hahashop-data
+    #   mountPath: /var/data
+    #   sizeGB: 1
