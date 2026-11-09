@@ -1,6 +1,15 @@
 /**
  * HAHA SHOP — Express API + SPA static
  */
+console.log(`[startup] HAHA SHOP booting: node ${process.version} ${process.platform}-${process.arch} pid=${process.pid}`);
+{
+  // better-sqlite3 v13 prebuilds require Node >= 22; on Node 20 `new Database()` segfaults (exit 139).
+  const major = Number(process.versions.node.split(".")[0]);
+  if (major < 22) {
+    console.error(`[startup] FATAL: Node ${process.version} is too old. HAHA SHOP requires Node 22.x (better-sqlite3 crashes on older Node).`);
+    process.exit(1);
+  }
+}
 const path = require("path");
 const fs = require("fs");
 
@@ -15,12 +24,15 @@ const fs = require("fs");
   } catch (_) {}
 })();
 
+console.log("[startup] env loaded (NODE_ENV=%s, PORT=%s)", process.env.NODE_ENV || "", process.env.PORT || "");
 const express = require("express");
 const session = require("express-session");
 const bcrypt = require("bcryptjs");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
+console.log("[startup] opening database (better-sqlite3)...");
 const { db, getSetting } = require("./lib/db");
+console.log("[startup] database opened");
 const { redeemVoucher, extractHash, THAI_ERRORS } = require("./lib/truemoney");
 const { createAdminRouter } = require("./lib/admin-api");
 const { UPLOAD_DIR } = require("./lib/upload");
@@ -34,7 +46,9 @@ const {
   csrfOk,
 } = require("./lib/security");
 const { ensureAdmin } = require("./scripts/ensure-admin");
+console.log("[startup] ensuring admin account...");
 ensureAdmin();
+console.log("[startup] admin ensured");
 
 const PORT = Number(process.env.PORT || 8080);
 const SESSION_SECRET = process.env.SESSION_SECRET || "haha-shop-dev-secret";
@@ -536,5 +550,5 @@ app.use((err, _req, res, _next) => {
 });
 
 app.listen(PORT, "0.0.0.0", () => {
-  console.log(`HAHA SHOP listening on http://127.0.0.1:${PORT}`);
+  console.log(`[startup] HAHA SHOP listening on 0.0.0.0:${PORT}`);
 });
