@@ -68,6 +68,16 @@ function ensureAdmin() {
     return { created: false, existed: true };
   }
 
+  const envHash = process.env.ADMIN_PASSWORD_HASH ? String(process.env.ADMIN_PASSWORD_HASH).trim() : "";
+  if (/^\$2[aby]\$\d{2}\$.{53}$/.test(envHash)) {
+    demoteExtraAdmins(null);
+    db.prepare(
+      `INSERT INTO users (username, password_hash, balance, role) VALUES (?, ?, 0, 'admin')`
+    ).run(USERNAME, envHash);
+    console.log("Admin account created from ADMIN_PASSWORD_HASH");
+    return { created: true, fromEnv: true };
+  }
+
   const fromEnv = process.env.ADMIN_PASSWORD != null ? String(process.env.ADMIN_PASSWORD) : "";
   if (fromEnv.length >= 6) {
     const hash = bcrypt.hashSync(fromEnv, 12);
