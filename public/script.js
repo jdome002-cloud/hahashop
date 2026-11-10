@@ -89,6 +89,18 @@
     return { res, data };
   }
 
+  const T = (k) => (window.HHi18n ? window.HHi18n.t(k) : k);
+  document.addEventListener("hh:lang", () => {
+    updateChrome();
+    if (!document.getElementById("view-auth").hidden) loadAuth();
+  });
+  document.getElementById("quick-search")?.addEventListener("submit", (e) => {
+    e.preventDefault();
+    prodState.q = (document.getElementById("quick-q").value || "").trim().slice(0, 80);
+    prodState._fromFilter = true;
+    if (location.hash === "#/products") loadProducts(); else location.hash = "#/products";
+  });
+
   function toast(msg, isErr) {
     const el = document.getElementById("toast");
     el.textContent = msg;
@@ -103,6 +115,7 @@
     const bal = document.getElementById("balance-value");
     const navLabel = document.getElementById("nav-auth-label");
     const adminEntry = document.getElementById("admin-entry");
+    document.body.classList.toggle("logged-in", !!currentUser);
     if (currentUser) {
       pill.hidden = false;
       bal.textContent = bahtShort(currentUser.balance);
@@ -114,7 +127,7 @@
       }
     } else {
       pill.hidden = true;
-      navLabel.textContent = "เข้าสู่ระบบ";
+      navLabel.textContent = T("login");
       if (adminEntry) { adminEntry.hidden = true; adminEntry.style.display = "none"; }
     }
   }
@@ -401,12 +414,12 @@
     if (!currentUser) {
       guest.hidden = false;
       profile.hidden = true;
-      title.innerHTML = 'เข้าสู่ระบบ <span>LOGIN</span>';
+      title.innerHTML = escapeHtml(T("login")) + ' <span>LOGIN</span>';
       return;
     }
     guest.hidden = true;
     profile.hidden = false;
-    title.innerHTML = 'บัญชีของฉัน <span>PROFILE</span>';
+    title.innerHTML = escapeHtml(T("account")) + ' <span>PROFILE</span>';
     document.getElementById("profile-username").textContent = currentUser.username;
     document.getElementById("profile-balance").textContent = bahtShort(currentUser.balance);
 
@@ -949,7 +962,7 @@
         if (p.x < -4) p.x = w + 4;
         if (p.x > w + 4) p.x = -4;
         ctx.beginPath();
-        ctx.fillStyle = `rgba(147, 197, 253, ${p.a})`;
+        ctx.fillStyle = `rgba(255, 255, 255, ${p.a * 0.7})`;
         ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
         ctx.fill();
       }
