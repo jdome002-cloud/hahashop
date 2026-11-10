@@ -46,6 +46,7 @@ const {
   csrfOk,
 } = require("./lib/security");
 const { ensureAdmin } = require("./scripts/ensure-admin");
+const { mountAuthExtra, normEmail, discordConfigured, smtpConfigured } = require("./lib/auth-extra");
 console.log("[startup] ensuring admin account...");
 ensureAdmin();
 console.log("[startup] admin ensured");
@@ -173,6 +174,8 @@ function publicUser(row) {
   return {
     id: row.id,
     username: row.username,
+    email: row.email || null,
+    discord: !!row.discord_id,
     balance: Number(row.balance) || 0,
     role: row.role || "user",
     isAdmin: (row.role || "user") === "admin",
@@ -185,13 +188,24 @@ function requireAuth(req, res, next) {
   next();
 }
 function getUserById(id) {
-  return db.prepare("SELECT id, username, balance, password_hash, role FROM users WHERE id = ?").get(id);
+  return db.prepare("SELECT id, username, email, discord_id, balance, password_hash, role, pw_version FROM users WHERE id = ?").get(id);
 }
 
 // Admin idle timeout
 app.use((req, res, next) => {
   if (!req.session || !req.session.userId) return next();
   const now = Date.now();
+  // Invalidate sessions created before the user's last password change
+  const pv = db.prepare("SELECT pw_version FROM users WHERE id = ?").get(req.session.userId);
+  if (!pv || Number(pv.pw_version || 0) !== Number(req.session.pwv || 0)) {
+    return req.session.destroy(() => {
+      res.clearCookie("hahashop.sid");
+      if (req.path.startsWith("/api/") && req.path !== "/api/me" && req.path !== "/api/csrf") {
+        return res.status(401).json({ ok: false, message: "เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่" });
+      }
+      next();
+    });
+  }
   if (req.session.isAdmin) {
     const last = req.session.lastActive || now;
     if (now - last > ADMIN_IDLE_MS) {
@@ -209,10 +223,24 @@ app.use((req, res, next) => {
 });
 
 
+function startSession(req, res, user, cb) {
+  const oldCsrf = req.session.csrfToken;
+  req.session.regenerate((err) => {
+    if (err) return cb(err);
+    req.session.userId = user.id;
+    req.session.isAdmin = (user.role || "user") === "admin";
+    req.session.pwv = Number(user.pw_version || 0);
+    req.session.lastActive = Date.now();
+    req.session.csrfToken = oldCsrf || ensureCsrf(req);
+    cb(null);
+  });
+}
+mountAuthExtra(app, { startSession });
+
 app.get("/api/stats", (_req, res) => {
   const users = db.prepare(`SELECT COUNT(*) AS c FROM users WHERE role != 'admin'`).get().c;
-  const products = db.prepare(`SELECT COUNT(*) AS c FROM products`).get().c;
-  const stock = db.prepare(`SELECT COALESCE(SUM(stock), 0) AS c FROM products`).get().c;
+  const products = db.prepare(`SELECT COUNT(*) AS c FROM products WHERE deleted = 0`).get().c;
+  const stock = db.prepare(`SELECT COALESCE(SUM(stock), 0) AS c FROM products WHERE deleted = 0`).get().c;
   const orders = db.prepare(`SELECT COUNT(*) AS c FROM orders`).get().c;
   const topups = db.prepare(`SELECT COUNT(*) AS c FROM transactions WHERE type='topup' AND status='success'`).get().c;
   const plays = db.prepare(`SELECT COUNT(*) AS c FROM minigame_plays`).get().c;
@@ -247,28 +275,37 @@ app.post("/api/signup", authLimiter, (req, res) => {
   }
   const username = String(req.body?.username || "").trim();
   const password = String(req.body?.password || "");
+  const emailRaw = String(req.body?.email || "").trim();
+  const email = normEmail(emailRaw);
   if (!/^[A-Za-z0-9_]{3,24}$/.test(username)) {
     return res.status(400).json({ ok: false, message: "ชื่อผู้ใช้ต้องเป็น a-z, 0-9, _ ความยาว 3–24 ตัวอักษร" });
+  }
+  if (!email) {
+    return res.status(400).json({ ok: false, message: "กรุณากรอกอีเมลให้ถูกต้อง" });
   }
   if (password.length < 6 || password.length > 72) {
     return res.status(400).json({ ok: false, message: "รหัสผ่านต้องยาวอย่างน้อย 6 ตัวอักษร" });
   }
-  if (db.prepare("SELECT id FROM users WHERE username = ? COLLATE NOCASE").get(username)) {
-    return res.status(409).json({ ok: false, message: "ชื่อผู้ใช้นี้ถูกใช้แล้ว" });
-  }
   if (username.toLowerCase() === "admin") {
     return res.status(403).json({ ok: false, message: "ไม่สามารถสมัครชื่อนี้ได้" });
   }
-  const info = db.prepare("INSERT INTO users (username, password_hash, balance, role) VALUES (?, ?, 0, 'user')")
-    .run(username, bcrypt.hashSync(password, 10));
-  const oldCsrf = req.session.csrfToken;
-  req.session.regenerate((err) => {
+  if (db.prepare("SELECT id FROM users WHERE username = ? COLLATE NOCASE").get(username)) {
+    return res.status(409).json({ ok: false, message: "ชื่อผู้ใช้นี้ถูกใช้แล้ว" });
+  }
+  if (db.prepare("SELECT id FROM users WHERE email = ? COLLATE NOCASE").get(email)) {
+    return res.status(409).json({ ok: false, message: "อีเมลนี้ถูกใช้แล้ว ลองเข้าสู่ระบบหรือกดลืมรหัสผ่าน" });
+  }
+  let info;
+  try {
+    info = db.prepare("INSERT INTO users (username, password_hash, balance, role, email) VALUES (?, ?, 0, 'user', ?)")
+      .run(username, bcrypt.hashSync(password, 10), email);
+  } catch (_) {
+    return res.status(409).json({ ok: false, message: "ชื่อผู้ใช้หรืออีเมลนี้ถูกใช้แล้ว" });
+  }
+  const user = getUserById(info.lastInsertRowid);
+  startSession(req, res, user, (err) => {
     if (err) return res.status(500).json({ ok: false, message: "สมัครไม่สำเร็จ" });
-    req.session.userId = info.lastInsertRowid;
-    req.session.isAdmin = false;
-    req.session.lastActive = Date.now();
-    req.session.csrfToken = oldCsrf || ensureCsrf(req);
-    res.json({ ok: true, user: publicUser(getUserById(info.lastInsertRowid)), csrfToken: req.session.csrfToken, message: "สมัครสมาชิกสำเร็จ" });
+    res.json({ ok: true, user: publicUser(user), csrfToken: req.session.csrfToken, message: "สมัครสมาชิกสำเร็จ" });
   });
 });
 
@@ -277,22 +314,18 @@ app.post("/api/login", authLimiter, (req, res) => {
   if (isLoginLocked(ip)) {
     return res.status(429).json({ ok: false, message: "ล็อกชั่วคราวเนื่องจากพยายามผิดหลายครั้ง กรุณารอ 15 นาที" });
   }
-  const username = String(req.body?.username || "").trim();
+  const ident = String(req.body?.identifier ?? req.body?.username ?? "").trim().slice(0, 254);
   const password = String(req.body?.password || "");
-  const user = db.prepare("SELECT * FROM users WHERE username = ? COLLATE NOCASE").get(username);
+  const user = ident.includes("@")
+    ? db.prepare("SELECT * FROM users WHERE email = ? COLLATE NOCASE").get(ident.toLowerCase())
+    : db.prepare("SELECT * FROM users WHERE username = ? COLLATE NOCASE").get(ident);
   if (!user || !bcrypt.compareSync(password, user.password_hash)) {
     recordFailedLogin(ip);
-    return res.status(401).json({ ok: false, message: "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง" });
+    return res.status(401).json({ ok: false, message: "ชื่อผู้ใช้/อีเมล หรือรหัสผ่านไม่ถูกต้อง" });
   }
   clearFailedLogin(ip);
-  const oldCsrf = req.session.csrfToken;
-  const isAdmin = (user.role || "user") === "admin";
-  req.session.regenerate((err) => {
+  startSession(req, res, user, (err) => {
     if (err) return res.status(500).json({ ok: false, message: "เข้าสู่ระบบไม่สำเร็จ" });
-    req.session.userId = user.id;
-    req.session.isAdmin = isAdmin;
-    req.session.lastActive = Date.now();
-    req.session.csrfToken = oldCsrf || ensureCsrf(req);
     res.json({ ok: true, user: publicUser(user), csrfToken: req.session.csrfToken, message: "เข้าสู่ระบบสำเร็จ" });
   });
 });
@@ -353,6 +386,7 @@ app.get("/api/config", (_req, res) => {
     announcement: getSetting("announcement", "ยินดีต้อนรับสู่ HAHA SHOP"),
     contact_url: getSetting("contact_url", "#"),
     contact_label: getSetting("contact_label", "ติดต่อแอดมิน"),
+    auth: { discord: discordConfigured(), emailReset: smtpConfigured() },
     topup: { method: "truemoney_gift", hint: "วางลิงก์ซองอั่งเปา TrueMoney เพื่อเติมเครดิต" },
   });
 });
@@ -365,7 +399,7 @@ app.get("/api/products", (req, res) => {
   const min = req.query.min !== undefined && req.query.min !== "" ? Number(req.query.min) : null;
   const max = req.query.max !== undefined && req.query.max !== "" ? Number(req.query.max) : null;
 
-  let sql = `SELECT * FROM products WHERE 1=1`;
+  let sql = `SELECT * FROM products WHERE deleted = 0`;
   const params = [];
   if (q) { sql += ` AND (title LIKE ? OR sku LIKE ? OR description LIKE ?)`; params.push(`%${q}%`, `%${q}%`, `%${q}%`); }
   if (category) { sql += ` AND category = ?`; params.push(category); }
@@ -380,7 +414,7 @@ app.get("/api/products", (req, res) => {
 });
 
 app.get("/api/products/:id", (req, res) => {
-  const p = db.prepare("SELECT * FROM products WHERE id = ?").get(req.params.id);
+  const p = db.prepare("SELECT * FROM products WHERE id = ? AND deleted = 0").get(req.params.id);
   if (!p) return res.status(404).json({ ok: false, message: "ไม่พบสินค้า" });
   res.json({ ok: true, product: p });
 });
@@ -389,7 +423,7 @@ app.post("/api/products/:id/buy", requireAuth, buyLimiter, (req, res) => {
   const productId = Number(req.params.id);
   try {
     const result = db.transaction(() => {
-      const p = db.prepare("SELECT * FROM products WHERE id = ?").get(productId);
+      const p = db.prepare("SELECT * FROM products WHERE id = ? AND deleted = 0").get(productId);
       if (!p) throw Object.assign(new Error("ไม่พบสินค้า"), { status: 404 });
       if (p.stock <= 0 || Number(p.price) < 0) throw Object.assign(new Error("สินค้าหมดแล้ว"), { status: 400 });
       const user = getUserById(req.session.userId);
@@ -471,12 +505,12 @@ app.post("/api/auctions/:id/bid", requireAuth, (req, res) => {
 
 /* —— Minigames —— */
 app.get("/api/minigames", (_req, res) => {
-  const games = db.prepare("SELECT * FROM minigames ORDER BY id").all();
+  const games = db.prepare("SELECT * FROM minigames WHERE deleted = 0 ORDER BY id").all();
   res.json({ ok: true, minigames: games });
 });
 
 app.get("/api/minigames/:id", (req, res) => {
-  const g = db.prepare("SELECT * FROM minigames WHERE id = ? OR slug = ?").get(req.params.id, req.params.id);
+  const g = db.prepare("SELECT * FROM minigames WHERE (id = ? OR slug = ?) AND deleted = 0").get(req.params.id, req.params.id);
   if (!g) return res.status(404).json({ ok: false, message: "ไม่พบมินิเกม" });
   const prizes = db.prepare("SELECT id, label, weight FROM minigame_prizes WHERE minigame_id = ?").all(g.id);
   res.json({ ok: true, minigame: g, prizes });
@@ -486,7 +520,7 @@ app.post("/api/minigames/:id/play", requireAuth, (req, res) => {
   const key = req.params.id;
   try {
     const out = db.transaction(() => {
-      const g = db.prepare("SELECT * FROM minigames WHERE id = ? OR slug = ?").get(key, key);
+      const g = db.prepare("SELECT * FROM minigames WHERE (id = ? OR slug = ?) AND deleted = 0").get(key, key);
       if (!g) throw Object.assign(new Error("ไม่พบมินิเกม"), { status: 404 });
       const user = getUserById(req.session.userId);
       if (user.balance < g.price) {

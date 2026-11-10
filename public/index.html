@@ -120,10 +120,10 @@
         </div>
       </section>
       <section class="section">
-        <div class="section-head"><h2 data-i18n="featured">สินค้าแนะนำ</h2><span class="badge-demo">ข้อมูลตัวอย่าง</span></div>
+        <div class="section-head"><h2 data-i18n="featured">สินค้าแนะนำ</h2></div>
         <div class="product-grid" id="home-products"></div>
       </section>
-      <p class="disclaimer">HAHA SHOP · สมาชิก/เครดิต/สั่งซื้อใช้งานได้บนเซิร์ฟเวอร์นี้ · รายการไอดีเป็นตัวอย่าง</p>
+      <p class="helper">HAHA SHOP</p>
     </div>
   </main>
 
@@ -209,6 +209,41 @@
     </div>
   </main>
 
+  <!-- FORGOT PASSWORD -->
+  <main class="page-view" id="view-forgot" data-view="forgot" hidden>
+    <div class="page-pad">
+      <nav class="crumb"><a href="#/auth" data-i18n="back_login">← กลับไปหน้าเข้าสู่ระบบ</a></nav>
+      <h1 class="page-title"><span class="t" data-i18n="forgot_title">ลืมรหัสผ่าน</span> <span>RESET</span></h1>
+      <div class="info-card">
+        <p class="muted" data-i18n="forgot_desc">กรอกอีเมลที่ใช้สมัคร เราจะส่งลิงก์ตั้งรหัสผ่านใหม่ให้ (ลิงก์หมดอายุใน 30 นาที)</p>
+        <p class="notice-warn" id="forgot-off" hidden data-i18n="forgot_off">ตอนนี้ยังรีเซ็ตรหัสผ่านทางอีเมลไม่ได้ กรุณาติดต่อแอดมินเพื่อให้ตั้งรหัสผ่านใหม่ให้</p>
+        <form id="forgot-form" class="form">
+          <label><span data-i18n="email">อีเมล</span><input name="email" type="email" required maxlength="254" autocomplete="email" autocapitalize="none" placeholder="you@mail.com" /></label>
+          <p class="form-error" id="forgot-error" hidden></p>
+          <p class="ok" id="forgot-ok" hidden></p>
+          <button class="btn-primary" type="submit" data-i18n="forgot_send">ส่งลิงก์ตั้งรหัสผ่านใหม่</button>
+        </form>
+      </div>
+    </div>
+  </main>
+
+  <!-- RESET PASSWORD -->
+  <main class="page-view" id="view-reset" data-view="reset" hidden>
+    <div class="page-pad">
+      <nav class="crumb"><a href="#/auth" data-i18n="back_login">← กลับไปหน้าเข้าสู่ระบบ</a></nav>
+      <h1 class="page-title"><span class="t" data-i18n="reset_title">ตั้งรหัสผ่านใหม่</span> <span>NEW PASSWORD</span></h1>
+      <div class="info-card">
+        <form id="reset-form" class="form">
+          <label><span data-i18n="new_password">รหัสผ่านใหม่</span><input name="password" type="password" required minlength="6" maxlength="72" autocomplete="new-password" placeholder="6+" /></label>
+          <label><span data-i18n="password2">ยืนยันรหัสผ่าน</span><input name="password2" type="password" required minlength="6" maxlength="72" autocomplete="new-password" /></label>
+          <p class="form-error" id="reset-error" hidden></p>
+          <p class="ok" id="reset-ok" hidden></p>
+          <button class="btn-primary" type="submit" data-i18n="reset_save">บันทึกรหัสผ่านใหม่</button>
+        </form>
+      </div>
+    </div>
+  </main>
+
   <!-- AUTH / PROFILE -->
   <main class="page-view" id="view-auth" data-view="auth" hidden>
     <div class="page-pad">
@@ -241,27 +276,38 @@
         </div>
         <div id="auth-login" class="info-card">
           <form id="login-form" class="form">
-            <label><span data-i18n="username">ชื่อผู้ใช้</span><input name="username" required minlength="3" maxlength="24" autocomplete="username" placeholder="username" /></label>
+            <label><span data-i18n="identifier">ชื่อผู้ใช้หรืออีเมล</span><input name="identifier" required minlength="3" maxlength="254" autocomplete="username" autocapitalize="none" placeholder="username / you@mail.com" /></label>
             <label><span data-i18n="password">รหัสผ่าน</span><input name="password" type="password" required minlength="6" autocomplete="current-password" placeholder="••••••" /></label>
+            <div class="row-end"><a class="link-sm" href="#/forgot" data-i18n="forgot_link">ลืมรหัสผ่าน?</a></div>
             <p class="form-error" id="login-error" hidden></p>
             <button class="btn-primary" type="submit" data-i18n="login">เข้าสู่ระบบ</button>
-            <p class="helper" data-i18n="helper_login">ยังไม่มีบัญชี? กดแท็บ “สมัครสมาชิก” ด้านบน</p>
           </form>
+          <div class="oauth-block" data-oauth hidden>
+            <div class="or-sep"><span data-i18n="or">หรือ</span></div>
+            <a class="btn-discord" href="/auth/discord"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M20.3 4.4A19.6 19.6 0 0 0 15.4 3l-.6 1.3a18.2 18.2 0 0 0-5.6 0L8.6 3a19.5 19.5 0 0 0-4.9 1.5C.6 9.1-.3 13.6.1 18.1a19.8 19.8 0 0 0 6 3l1.3-2.1a12.8 12.8 0 0 1-2-1l.5-.4a14 14 0 0 0 12.2 0l.5.4a12.7 12.7 0 0 1-2 1l1.3 2.1a19.7 19.7 0 0 0 6-3c.5-5.2-.9-9.7-3.6-13.7ZM8 15.3c-1.2 0-2.2-1.1-2.2-2.4S6.8 10.5 8 10.5s2.2 1.1 2.2 2.4-1 2.4-2.2 2.4Zm8 0c-1.2 0-2.2-1.1-2.2-2.4s1-2.4 2.2-2.4 2.2 1.1 2.2 2.4-1 2.4-2.2 2.4Z"/></svg><span data-i18n="discord_login">เข้าสู่ระบบด้วย Discord</span></a>
+          </div>
+          <p class="helper" data-i18n="helper_login">ยังไม่มีบัญชี? กดแท็บ “สมัครสมาชิก” ด้านบน</p>
         </div>
         <div id="auth-signup" class="info-card" hidden>
           <form id="signup-form" class="form">
-            <label><span data-i18n="username">ชื่อผู้ใช้</span><input name="username" required minlength="3" maxlength="24" pattern="[A-Za-z0-9_]{3,24}" placeholder="a-z 0-9 _" /></label>
+            <label><span data-i18n="username">ชื่อผู้ใช้</span><input name="username" required minlength="3" maxlength="24" pattern="[A-Za-z0-9_]{3,24}" placeholder="a-z 0-9 _" autocapitalize="none" autocomplete="username" /></label>
+            <label><span data-i18n="email">อีเมล</span><input name="email" type="email" required maxlength="254" autocomplete="email" autocapitalize="none" placeholder="you@mail.com" /></label>
             <label><span data-i18n="password">รหัสผ่าน</span><input name="password" type="password" required minlength="6" autocomplete="new-password" placeholder="6+" /></label>
             <label><span data-i18n="password2">ยืนยันรหัสผ่าน</span><input name="password2" type="password" required minlength="6" autocomplete="new-password" /></label>
             <p class="form-error" id="signup-error" hidden></p>
             <button class="btn-primary" type="submit" data-i18n="signup">สมัครสมาชิก</button>
           </form>
+          <div class="oauth-block" data-oauth hidden>
+            <div class="or-sep"><span data-i18n="or">หรือ</span></div>
+            <a class="btn-discord" href="/auth/discord"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M20.3 4.4A19.6 19.6 0 0 0 15.4 3l-.6 1.3a18.2 18.2 0 0 0-5.6 0L8.6 3a19.5 19.5 0 0 0-4.9 1.5C.6 9.1-.3 13.6.1 18.1a19.8 19.8 0 0 0 6 3l1.3-2.1a12.8 12.8 0 0 1-2-1l.5-.4a14 14 0 0 0 12.2 0l.5.4a12.7 12.7 0 0 1-2 1l1.3 2.1a19.7 19.7 0 0 0 6-3c.5-5.2-.9-9.7-3.6-13.7ZM8 15.3c-1.2 0-2.2-1.1-2.2-2.4S6.8 10.5 8 10.5s2.2 1.1 2.2 2.4-1 2.4-2.2 2.4Zm8 0c-1.2 0-2.2-1.1-2.2-2.4s1-2.4 2.2-2.4 2.2 1.1 2.2 2.4-1 2.4-2.2 2.4Z"/></svg><span data-i18n="discord_signup">สมัครด้วย Discord</span></a>
+          </div>
         </div>
       </div>
 
       <div id="auth-profile" hidden>
         <div class="info-card">
           <h3 id="profile-username"></h3>
+          <p class="muted mono" id="profile-email"></p>
           <p class="detail-price" id="profile-balance">฿0</p>
           <a class="btn-primary" href="#/topup" style="display:block;text-align:center;text-decoration:none;margin-bottom:8px" data-i18n="topup">เติมเครดิต</a>
           <a class="btn-primary" id="admin-entry" href="#/admin" hidden style="display:none;text-align:center;text-decoration:none;margin-bottom:8px;background:#facc15;color:#000">หลังบ้าน</a>

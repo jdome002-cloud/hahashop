@@ -231,3 +231,28 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: #6b6b73
 @media (max-width: 440px) {
   body.logged-in .brand-text { display: none; }
 }
+
+/* —— Auth v2: email, Discord, reset —— */
+.page-title span.t { color: inherit; font-size: inherit; font-weight: inherit; letter-spacing: inherit; margin: 0; }
+.row-end { display: flex; justify-content: flex-end; margin-top: 8px; }
+.link-sm, .crumb a { color: #c9c9cf; font-size: 12px; text-decoration: none; border-bottom: 1px dashed #55555c; }
+.link-sm:hover { color: #fff; }
+.or-sep { display: flex; align-items: center; gap: 10px; margin: 16px 0 12px; color: #5f5f68; font-size: 12px; }
+.or-sep::before, .or-sep::after { content: ""; flex: 1; height: 1px; background: rgba(255,255,255,0.10); }
+.btn-discord {
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  width: 100%; padding: 13px; text-decoration: none; font-weight: 700; font-size: 15px;
+  background: #5865f2; color: #fff; clip-path: var(--clip);
+  filter: drop-shadow(0 0 14px rgba(88,101,242,0.35)); transition: filter .2s, transform .15s;
+}
+.btn-discord svg { width: 22px; height: 22px; }
+.btn-discord:hover { filter: drop-shadow(0 0 20px rgba(88,101,242,0.55)); }
+.btn-discord:active { transform: scale(0.98); }
+.notice-warn {
+  margin-top: 12px; padding: 10px 12px; font-size: 13px; color: #111; font-weight: 600;
+  background: var(--yellow); clip-path: var(--clip-sm);
+}
+.ok { color: #fde68a; font-size: 13px; margin-top: 8px; }
+.mono { font-family: var(--mono); font-size: 12px; }
+.admin-actions button.armed { background: #f43f5e !important; color: #fff !important; border-color: transparent !important; }
+.pw-form input { font-family: var(--mono); }

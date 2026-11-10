@@ -23,9 +23,25 @@ services:
         sync: false
       - key: ADMIN_PASSWORD
         sync: false
-      # Optional: set to your public URL (e.g. https://hahashop.onrender.com)
-      # - key: PUBLIC_URL
-      #   sync: false
+      # Public URL (needed for Discord sign-in and password-reset links)
+      - key: PUBLIC_URL
+        value: https://hahashop.onrender.com
+      # Discord OAuth2 (redirect URI: https://hahashop.onrender.com/auth/discord/callback)
+      - key: DISCORD_CLIENT_ID
+        sync: false
+      - key: DISCORD_CLIENT_SECRET
+        sync: false
+      # SMTP for forgot-password emails (leave empty to disable; admin can reset passwords instead)
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        sync: false
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: MAIL_FROM
+        sync: false
 
       # --- Paid starter (or higher): uncomment disk + path env vars ---
       # - key: DATA_DIR

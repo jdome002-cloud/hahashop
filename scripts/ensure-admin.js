@@ -14,6 +14,19 @@ const { db } = require("../lib/db");
 const ROOT = path.join(__dirname, "..");
 const CRED_FILE = path.join(ROOT, "ADMIN-LOGIN.txt");
 const USERNAME = "admin";
+// Starting credit for the admin account. Applied when the admin is created (so it survives
+// Render free-tier redeploys, which recreate the DB) and once on existing databases.
+const ADMIN_START_BALANCE = process.env.ADMIN_START_BALANCE && Number.isFinite(Number(process.env.ADMIN_START_BALANCE))
+  ? Math.max(0, Number(process.env.ADMIN_START_BALANCE)) : 500;
+const BALANCE_FLAG = "admin_balance_500_v1";
+
+function applyStartBalanceOnce() {
+  if (db.prepare("SELECT 1 FROM settings WHERE key = ?").get(BALANCE_FLAG)) return;
+  const admin = db.prepare("SELECT id FROM users WHERE role = 'admin'").get();
+  if (!admin) return;
+  db.prepare("UPDATE users SET balance = ? WHERE id = ?").run(ADMIN_START_BALANCE, admin.id);
+  db.prepare("INSERT OR IGNORE INTO settings (key, value) VALUES (?, '1')").run(BALANCE_FLAG);
+}
 
 function genPassword() {
   return crypto.randomBytes(18).toString("base64url");
@@ -38,6 +51,10 @@ function demoteExtraAdmins(keepId) {
 }
 
 function ensureAdmin() {
+  try { return ensureAdminInner(); } finally { applyStartBalanceOnce(); }
+}
+
+function ensureAdminInner() {
   const existingAdmins = db.prepare(`SELECT id, username FROM users WHERE role = 'admin'`).all();
   let admin = db.prepare(`SELECT * FROM users WHERE username = ? COLLATE NOCASE`).get(USERNAME);
 
@@ -72,8 +89,8 @@ function ensureAdmin() {
   if (/^\$2[aby]\$\d{2}\$.{53}$/.test(envHash)) {
     demoteExtraAdmins(null);
     db.prepare(
-      `INSERT INTO users (username, password_hash, balance, role) VALUES (?, ?, 0, 'admin')`
-    ).run(USERNAME, envHash);
+      `INSERT INTO users (username, password_hash, balance, role) VALUES (?, ?, ?, 'admin')`
+    ).run(USERNAME, envHash, ADMIN_START_BALANCE);
     console.log("Admin account created from ADMIN_PASSWORD_HASH");
     return { created: true, fromEnv: true };
   }
@@ -83,8 +100,8 @@ function ensureAdmin() {
     const hash = bcrypt.hashSync(fromEnv, 12);
     demoteExtraAdmins(null);
     db.prepare(
-      `INSERT INTO users (username, password_hash, balance, role) VALUES (?, ?, 0, 'admin')`
-    ).run(USERNAME, hash);
+      `INSERT INTO users (username, password_hash, balance, role) VALUES (?, ?, ?, 'admin')`
+    ).run(USERNAME, hash, ADMIN_START_BALANCE);
     console.log("Admin account created from ADMIN_PASSWORD");
     return { created: true, fromEnv: true };
   }
@@ -102,8 +119,8 @@ function ensureAdmin() {
     db.prepare(`UPDATE users SET password_hash = ?, role = 'admin' WHERE id = ?`).run(hash, admin.id);
   } else {
     db.prepare(
-      `INSERT INTO users (username, password_hash, balance, role) VALUES (?, ?, 0, 'admin')`
-    ).run(USERNAME, hash);
+      `INSERT INTO users (username, password_hash, balance, role) VALUES (?, ?, ?, 'admin')`
+    ).run(USERNAME, hash, ADMIN_START_BALANCE);
   }
   writeCreds(USERNAME, password);
   console.log(`Admin account created. Credentials written to ${CRED_FILE}`);

@@ -140,8 +140,10 @@
 
   function route() {
     const raw = (location.hash || "#/").replace(/^#/, "") || "/";
-    const parts = raw.split("/").filter(Boolean);
+    const [rawPath, rawQuery] = raw.split("?");
+    const parts = rawPath.split("/").filter(Boolean);
     const page = parts[0] || "home";
+    const hashQuery = new URLSearchParams(rawQuery || "");
     const sub = parts[1] || null;
 
     document.querySelectorAll(".page-view").forEach((v) => { v.hidden = true; });
@@ -153,6 +155,8 @@
       auction: "view-auction",
       minigame: "view-minigame",
       auth: "view-auth",
+      forgot: "view-forgot",
+      reset: "view-reset",
       admin: "view-admin",
     };
     const id = map[page] || "view-home";
@@ -165,7 +169,8 @@
     // fix home active
     document.querySelectorAll(".nav-item").forEach((a) => {
       const tab = a.getAttribute("data-tab");
-      const active = (page === "home" && tab === "home") || tab === page;
+      const active = (page === "home" && tab === "home") || tab === page ||
+        (tab === "auth" && (page === "forgot" || page === "reset"));
       a.classList.toggle("active", active);
     });
 
@@ -184,7 +189,9 @@
     else if (page === "minigame") {
       if (sub) openMinigamePlay(sub);
       else showMinigameList();
-    } else if (page === "auth") loadAuth();
+    } else if (page === "auth") { loadAuth(); handleAuthQuery(hashQuery); }
+    else if (page === "forgot") loadForgot();
+    else if (page === "reset") loadReset(hashQuery);
     else if (page === "admin") loadAdmin();
   }
 
@@ -421,6 +428,8 @@
     profile.hidden = false;
     title.innerHTML = escapeHtml(T("account")) + ' <span>PROFILE</span>';
     document.getElementById("profile-username").textContent = currentUser.username;
+    document.getElementById("profile-email").textContent =
+      (currentUser.email || "") + (currentUser.discord ? (currentUser.email ? " · " : "") + "Discord ✓" : "");
     document.getElementById("profile-balance").textContent = bahtShort(currentUser.balance);
 
     const [{ data: od }, { data: tx }] = await Promise.all([
@@ -566,7 +575,7 @@
     const fd = new FormData(e.target);
     const { res, data } = await api("/api/login", {
       method: "POST",
-      body: JSON.stringify({ username: fd.get("username"), password: fd.get("password") }),
+      body: JSON.stringify({ identifier: fd.get("identifier"), password: fd.get("password") }),
     });
     if (!res.ok || !data.ok) { err.textContent = data.message || "เข้าสู่ระบบไม่สำเร็จ"; err.hidden = false; return; }
     currentUser = data.user; updateChrome(); toast("เข้าสู่ระบบสำเร็จ"); loadAuth();
@@ -577,10 +586,10 @@
     const err = document.getElementById("signup-error");
     err.hidden = true;
     const fd = new FormData(e.target);
-    if (fd.get("password") !== fd.get("password2")) { err.textContent = "รหัสผ่านยืนยันไม่ตรงกัน"; err.hidden = false; return; }
+    if (fd.get("password") !== fd.get("password2")) { err.textContent = T("pw_mismatch"); err.hidden = false; return; }
     const { res, data } = await api("/api/signup", {
       method: "POST",
-      body: JSON.stringify({ username: fd.get("username"), password: fd.get("password") }),
+      body: JSON.stringify({ username: fd.get("username"), email: fd.get("email"), password: fd.get("password") }),
     });
     if (!res.ok || !data.ok) { err.textContent = data.message || "สมัครไม่สำเร็จ"; err.hidden = false; return; }
     currentUser = data.user; updateChrome(); toast("สมัครสมาชิกสำเร็จ"); loadAuth();
@@ -592,9 +601,80 @@
   });
 
 
+  let authCfg = { discord: false, emailReset: false };
+  function applyAuthCfg() {
+    document.querySelectorAll("[data-oauth]").forEach((el) => { el.hidden = !authCfg.discord; });
+  }
+
+  const AUTH_CODES = {
+    discord_off: "e_discord_off", discord_cancel: "e_discord_cancel", discord_state: "e_discord_state",
+    discord_fail: "e_discord_fail", discord_admin: "e_discord_admin",
+  };
+  function handleAuthQuery(q) {
+    const e = q.get("e"); const ok = q.get("ok");
+    if (e && AUTH_CODES[e]) {
+      document.querySelector('[data-auth-tab="login"]')?.click();
+      const err = document.getElementById("login-error");
+      err.textContent = T(AUTH_CODES[e]); err.hidden = false;
+      toast(T(AUTH_CODES[e]), true);
+    }
+    if (ok === "discord") {
+      refreshMe().then(() => { toast(T("discord_ok")); loadAuth(); });
+    }
+    if (e || ok) history.replaceState(null, "", "#/auth");
+  }
+
+  function loadForgot() {
+    const off = !authCfg.emailReset;
+    document.getElementById("forgot-off").hidden = !off;
+    document.getElementById("forgot-form").hidden = off;
+    document.getElementById("forgot-ok").hidden = true;
+    document.getElementById("forgot-error").hidden = true;
+  }
+  document.getElementById("forgot-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const err = document.getElementById("forgot-error"); const ok = document.getElementById("forgot-ok");
+    err.hidden = true; ok.hidden = true;
+    const btn = e.target.querySelector("button[type=submit]"); btn.disabled = true;
+    const { res, data } = await api("/api/password/forgot", {
+      method: "POST", body: JSON.stringify({ email: new FormData(e.target).get("email") }),
+    });
+    btn.disabled = false;
+    if (data.error === "RESET_UNAVAILABLE") { authCfg.emailReset = false; loadForgot(); return; }
+    if (!res.ok || !data.ok) { err.textContent = data.message || T("failed"); err.hidden = false; return; }
+    ok.textContent = T("forgot_sent"); ok.hidden = false;
+  });
+
+  let resetToken = "";
+  function loadReset(q) {
+    const tok = q.get("token") || "";
+    if (tok) { resetToken = tok; history.replaceState(null, "", "#/reset"); }
+    const err = document.getElementById("reset-error");
+    document.getElementById("reset-ok").hidden = true;
+    err.hidden = !!resetToken;
+    if (!resetToken) err.textContent = T("reset_bad");
+    document.getElementById("reset-form").hidden = false;
+  }
+  document.getElementById("reset-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const err = document.getElementById("reset-error"); const ok = document.getElementById("reset-ok");
+    err.hidden = true;
+    const fd = new FormData(e.target);
+    if (fd.get("password") !== fd.get("password2")) { err.textContent = T("pw_mismatch"); err.hidden = false; return; }
+    if (!resetToken) { err.textContent = T("reset_bad"); err.hidden = false; return; }
+    const { res, data } = await api("/api/password/reset", {
+      method: "POST", body: JSON.stringify({ token: resetToken, password: fd.get("password") }),
+    });
+    if (!res.ok || !data.ok) { err.textContent = data.message || T("reset_bad"); err.hidden = false; return; }
+    resetToken = ""; e.target.reset(); e.target.hidden = true;
+    ok.textContent = T("reset_done"); ok.hidden = false;
+    setTimeout(() => { location.hash = "#/auth"; }, 1800);
+  });
+
   async function loadSiteConfig() {
     const { data } = await api("/api/config");
     configCats = data.categories || [];
+    if (data.auth) { authCfg = data.auth; applyAuthCfg(); }
     const track = document.getElementById("announce-track");
     if (track && data.announcement) {
       const t = escapeHtml(data.announcement) + " · ";
@@ -607,6 +687,17 @@
     }
   }
 
+
+  /* Two-tap delete (window.confirm is blocked in some in-app browsers such as LINE/Facebook) */
+  function armDelete(btn) {
+    if (btn.dataset.armed === "1") { delete btn.dataset.armed; return true; }
+    btn.dataset.armed = "1";
+    const old = btn.textContent;
+    btn.textContent = T("confirm_delete");
+    btn.classList.add("armed");
+    setTimeout(() => { if (btn.isConnected && btn.dataset.armed === "1") { delete btn.dataset.armed; btn.textContent = old; btn.classList.remove("armed"); } }, 3500);
+    return false;
+  }
 
   /* —— Admin panel —— */
   let adminTab = "dash";
@@ -716,9 +807,10 @@
   document.getElementById("atab-products").addEventListener("click", async (e) => {
     const del = e.target.closest("[data-del-product]");
     if (del) {
-      if (!confirm("ลบสินค้านี้?")) return;
-      await api("/api/admin/products/" + del.getAttribute("data-del-product"), { method: "DELETE" });
-      toast("ลบแล้ว"); renderAdminProducts(); return;
+      if (!armDelete(del)) return;
+      const { res, data } = await api("/api/admin/products/" + del.getAttribute("data-del-product"), { method: "DELETE" });
+      if (!res.ok || !data.ok) { toast(data.message || "ลบสินค้าไม่สำเร็จ", true); renderAdminProducts(); return; }
+      toast(data.message || "ลบแล้ว"); renderAdminProducts(); return;
     }
     const ed = e.target.closest("[data-edit-product]");
     if (ed) {
@@ -780,7 +872,7 @@
 
   document.getElementById("atab-categories").addEventListener("click", async (e) => {
     const del = e.target.closest("[data-del-cat]");
-    if (del) { await api("/api/admin/categories/"+del.getAttribute("data-del-cat"),{method:"DELETE"}); toast("ลบแล้ว"); loadSiteConfig(); renderAdminCategories(); return; }
+    if (del) { if(!armDelete(del)) return; await api("/api/admin/categories/"+del.getAttribute("data-del-cat"),{method:"DELETE"}); toast("ลบแล้ว"); loadSiteConfig(); renderAdminCategories(); return; }
     const ed = e.target.closest("[data-edit-cat]");
     if (ed) {
       const c = JSON.parse(ed.getAttribute("data-edit-cat"));
@@ -825,7 +917,7 @@
   }
   document.getElementById("atab-minigames").addEventListener("click", async (e) => {
     const del=e.target.closest("[data-del-mg]");
-    if(del){ await api("/api/admin/minigames/"+del.getAttribute("data-del-mg"),{method:"DELETE"}); toast("ลบแล้ว"); renderAdminMinigames(); return; }
+    if(del){ if(!armDelete(del)) return; const {res,data}=await api("/api/admin/minigames/"+del.getAttribute("data-del-mg"),{method:"DELETE"}); toast(data.message||(res.ok?"ลบแล้ว":"ลบไม่สำเร็จ"), !res.ok); renderAdminMinigames(); return; }
     const ed=e.target.closest("[data-edit-mg]");
     if(ed){ const g=JSON.parse(ed.getAttribute("data-edit-mg")); const f=document.getElementById("admin-mg-form");
       f.id.value=g.id; f.title.value=g.title; f.slug.value=g.slug; f.subtitle.value=g.subtitle||""; f.price.value=g.price;
@@ -861,7 +953,7 @@
   }
   document.getElementById("atab-auctions").addEventListener("click", async (e) => {
     const del=e.target.closest("[data-del-auc]");
-    if(del){ await api("/api/admin/auctions/"+del.getAttribute("data-del-auc"),{method:"DELETE"}); toast("ลบแล้ว"); renderAdminAuctions(); return; }
+    if(del){ if(!armDelete(del)) return; await api("/api/admin/auctions/"+del.getAttribute("data-del-auc"),{method:"DELETE"}); toast("ลบแล้ว"); renderAdminAuctions(); return; }
     const ed=e.target.closest("[data-edit-auc]");
     if(ed){ const a=JSON.parse(ed.getAttribute("data-edit-auc")); const f=document.getElementById("admin-auc-form");
       f.id.value=a.id; f.title.value=a.title; f.description.value=a.description||""; f.start_price.value=a.start_price; f.ends_at.value=a.ends_at||""; }
@@ -896,15 +988,29 @@
       ${(data.users||[]).map(u=>`
         <div class="admin-row">
           <div><strong>${escapeHtml(u.username)}</strong> ${u.role==="admin"?'<span class="badge-demo">admin</span>':''}
-            <div class="muted">เครดิต ${Number(u.balance).toFixed(2)} · ${u.created_at||""}</div></div>
+            <div class="muted">${u.email?escapeHtml(u.email)+" · ":""}${u.discord?"Discord · ":""}เครดิต ${Number(u.balance).toFixed(2)} · ${u.created_at||""}</div></div>
           <form class="credit-form" data-uid="${u.id}">
             <input name="amount" type="number" step="0.01" placeholder="จำนวน" required style="width:90px" />
             <select name="mode"><option value="set">ตั้งค่า</option><option value="add">บวก/ลบ</option></select>
             <button type="submit">ปรับ</button>
           </form>
+          ${u.role==="admin"?"":`<form class="credit-form pw-form" data-uid="${u.id}">
+            <input name="password" type="text" minlength="6" maxlength="72" placeholder="รหัสผ่านใหม่ (6+)" autocomplete="off" required />
+            <button type="submit">ตั้งรหัสใหม่</button>
+          </form>`}
         </div>`).join("")}</div>`;
   }
   document.getElementById("atab-users").addEventListener("submit", async (e) => {
+    const pwf = e.target.closest(".pw-form");
+    if (pwf) {
+      e.preventDefault();
+      const { res, data } = await api("/api/admin/users/"+pwf.getAttribute("data-uid")+"/password", {
+        method: "POST", body: JSON.stringify({ password: new FormData(pwf).get("password") })
+      });
+      toast(data.message || (res.ok ? "สำเร็จ" : "ไม่สำเร็จ"), !res.ok || !data.ok);
+      if (res.ok && data.ok) pwf.reset();
+      return;
+    }
     const form = e.target.closest(".credit-form"); if (!form) return;
     e.preventDefault();
     const fd = new FormData(form);
