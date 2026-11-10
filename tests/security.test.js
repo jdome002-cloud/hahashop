@@ -31,7 +31,7 @@ function startTrueMoney(port) {
       const v = m && vouchers.get(m[1]);
       res.setHeader("content-type", "application/json");
       if (!v) return res.end(JSON.stringify({ status: { code: "VOUCHER_NOT_FOUND", message: "not found" } }));
-      setTimeout(() => res.end(JSON.stringify({ status: { code: "SUCCESS", message: "success" }, data: { my_ticket: { amount_baht: String(v.amount), mobile: v.mobile || "062-xxx-2534" } } })), 30);
+      setTimeout(() => res.end(JSON.stringify({ status: { code: "SUCCESS", message: "success" }, data: { my_ticket: { amount_baht: String(v.amount), mobile: v.mobile || "080-xxx-0123" } } })), 30);
     }).listen(port, r);
   });
 }
