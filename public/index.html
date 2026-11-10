@@ -14,15 +14,10 @@
   <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/style.css" />
   <link rel="stylesheet" href="/theme.css" />
+  <link rel="stylesheet" href="/fx.css" />
 </head>
 <body>
-  <div id="fx-layer" aria-hidden="true"><svg class="fx-geo" viewBox="0 0 400 800" preserveAspectRatio="xMidYMid slice"><g fill="#ffffff">
-    <polygon points="0,60 140,0 220,0 0,170" opacity=".035"/>
-    <polygon points="400,120 260,260 400,330" opacity=".04"/>
-    <polygon points="30,420 170,330 120,560" opacity=".03"/>
-    <polygon points="400,520 300,600 360,760 400,740" opacity=".035"/>
-    <polygon points="0,700 90,640 160,800 0,800" opacity=".04"/>
-    <polygon points="210,380 290,440 230,470" opacity=".025"/></g></svg><canvas id="fx-canvas"></canvas><div class="fx-glow"></div></div>
+  <div id="fx-layer" aria-hidden="true"><canvas id="fx-canvas"></canvas><div class="fx-glow"></div></div>
   <div class="hazard-bar" role="status">
     <span class="hazard-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 7v6"/><path d="M12 17h.01"/></svg></span>
     <div class="marquee"><div class="marquee-track" id="announce-track"><span>ยินดีต้อนรับสู่ HAHA SHOP</span><span>ยินดีต้อนรับสู่ HAHA SHOP</span></div></div>
@@ -410,5 +405,6 @@
   <script src="/i18n.js"></script>
   <script src="/image-prep.js"></script>
   <script src="/script.js"></script>
+  <script src="/fx.js"></script>
 </body>
 </html>

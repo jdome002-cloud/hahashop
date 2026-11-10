@@ -1,0 +1,155 @@
+/* ===== HAHA SHOP — effects layer (v5). Everything animated uses transform/opacity where possible. ===== */
+
+/* Perf: cards sit over an animated canvas; backdrop blur would re-blur every frame. Cards are ~opaque anyway. */
+.cat-card, .product-card, .mg-card, .auction-row, .filter-box, .auth-card, .panel, .modal-card, .tx-item,
+.info-card, .stat-card, .menu-card { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+#fx-canvas { opacity: 1 !important; }
+
+/* —— Hazard stripes drift —— */
+.hazard-bar { background: var(--yellow) !important; }
+.hazard-bar::after {
+  content: ""; position: absolute; left: 0; bottom: 0; height: 6px; width: calc(100% + 46px);
+  background: repeating-linear-gradient(-45deg, #0a0a0a 0 8px, var(--yellow) 8px 16px);
+  pointer-events: none; will-change: transform;
+}
+
+/* —— Product cards: lift + inner glow, shine sweep, moving top-edge light —— */
+.cat-card { position: relative; isolation: isolate; transition: transform .28s cubic-bezier(.2,.8,.2,1), border-color .28s, box-shadow .28s; }
+.cat-card::before {
+  content: ""; position: absolute; inset: 0; z-index: 2; pointer-events: none;
+  background: linear-gradient(105deg, transparent 38%, rgba(255,255,255,.13) 48%, rgba(250,204,21,.10) 52%, transparent 62%);
+  transform: translateX(-120%); will-change: transform;
+}
+.cat-card::after {
+  content: ""; position: absolute; top: 0; left: 0; width: 45%; height: 2px; z-index: 3; pointer-events: none;
+  background: linear-gradient(90deg, transparent, var(--yellow), #fff, transparent);
+  opacity: .0; transform: translateX(-100%); will-change: transform, opacity;
+}
+.cat-card:hover, .cat-card.fx-press {
+  transform: translateY(-4px);
+  border-color: rgba(250,204,21,.45) !important;
+  box-shadow: inset 0 0 0 1px rgba(250,204,21,.18), inset 0 -40px 60px -40px rgba(250,204,21,.22) !important;
+}
+.cat-thumb.has-photo img { transition: transform .5s cubic-bezier(.2,.8,.2,1); }
+.cat-card:hover .cat-thumb.has-photo img, .cat-card.fx-press .cat-thumb.has-photo img { transform: scale(1.05); }
+.menu-card, .stat-card, .cat-banner, .mg-card { transition: transform .25s cubic-bezier(.2,.8,.2,1), border-color .25s; }
+.menu-card:hover, .menu-card.fx-press, .cat-banner:hover, .cat-banner.fx-press, .mg-card:hover, .mg-card.fx-press { transform: translateY(-3px); border-color: rgba(250,204,21,.4) !important; }
+.menu-card:hover .menu-icon, .menu-card.fx-press .menu-icon { box-shadow: 0 0 18px rgba(250,204,21,.35); border-color: rgba(250,204,21,.6); color: var(--yellow); }
+.menu-icon { transition: box-shadow .25s, border-color .25s, color .25s; }
+
+/* —— Cover banner: rotating gradient border —— */
+.hero-art { position: relative; isolation: isolate; padding: 2px; background: #0b0b0c; border: 0 !important; }
+.hero-art::before {
+  content: ""; position: absolute; left: 50%; top: 50%; width: 160%; aspect-ratio: 1; z-index: -1;
+  background: conic-gradient(from 0deg, transparent 0 62%, rgba(250,204,21,.0) 64%, rgba(250,204,21,.95) 74%, #fff 78%, rgba(250,204,21,.6) 82%, transparent 88%);
+  transform: translate(-50%, -50%); will-change: transform;
+}
+.hero-art::after { /* soft sheen over the cover */
+  content: ""; position: absolute; inset: 2px; pointer-events: none; z-index: 1;
+  background: linear-gradient(110deg, transparent 35%, rgba(255,255,255,.16) 48%, transparent 60%);
+  transform: translateX(-130%); will-change: transform; clip-path: var(--clip);
+}
+.hero-art img, .hero-art .hero-cover { position: relative; display: block; clip-path: var(--clip); }
+
+/* —— Buttons: shimmer + ripple —— */
+.btn-primary, a.btn-primary, .btn-buy-full, .click-pill, .btn-search, .btn-oauth, .nav-wallet { position: relative; overflow: hidden; isolation: isolate; }
+.btn-primary::after, a.btn-primary::after, .btn-buy-full::after, .click-pill::after {
+  content: ""; position: absolute; top: 0; bottom: 0; left: 0; width: 60%; pointer-events: none;
+  background: linear-gradient(100deg, transparent, rgba(255,255,255,.55), transparent);
+  transform: translateX(-160%) skewX(-18deg); will-change: transform;
+}
+.btn-buy-full::after { background: linear-gradient(100deg, transparent, rgba(250,204,21,.35), transparent); }
+.btn-primary:disabled::after, .btn-buy-full:disabled::after { display: none; }
+.fx-ripple {
+  position: absolute; border-radius: 50%; pointer-events: none; z-index: 0;
+  width: 12px; height: 12px; margin: -6px 0 0 -6px;
+  background: radial-gradient(circle, rgba(250,204,21,.55), rgba(250,204,21,.18) 45%, transparent 70%);
+  transform: scale(0); opacity: 1;
+}
+.btn-primary .fx-ripple, .btn-oauth.google .fx-ripple { background: radial-gradient(circle, rgba(0,0,0,.22), rgba(0,0,0,.08) 45%, transparent 70%); }
+.btn-primary:active, .btn-buy-full:active, .click-pill:active { box-shadow: inset 0 0 18px rgba(250,204,21,.35); }
+
+/* —— Price glow —— */
+.cat-price, .detail-price, .pm-wallet .yellow, .wallet-row .yellow { text-shadow: 0 0 8px rgba(250,204,21,.25); }
+
+/* —— Bottom nav sliding indicator —— */
+.bottom-nav { position: fixed; }
+.bottom-nav .nav-item.active::after, .bottom-nav .nav-item.active::before { opacity: 0; }
+.bottom-nav.fx-has-ind .nav-item.active::after { opacity: 0 !important; }
+.fx-nav-ind {
+  position: absolute; left: 0; bottom: calc(8px + env(safe-area-inset-bottom, 0px)); width: 18px; height: 3px; pointer-events: none;
+  background: var(--yellow); box-shadow: 0 0 10px rgba(250,204,21,.9), 0 0 2px #fff;
+  transition: transform .42s cubic-bezier(.3,1.4,.5,1), width .3s, opacity .2s; will-change: transform;
+}
+.fx-nav-ind.off { opacity: 0; }
+.bottom-nav .nav-item .nav-ico { transition: transform .3s cubic-bezier(.3,1.4,.5,1); }
+.bottom-nav .nav-item.active .nav-ico { transform: translateY(-2px) scale(1.08); }
+
+/* —— Scroll reveal —— */
+.fx-reveal { opacity: 0; transform: translateY(18px); transition: opacity .55s ease, transform .6s cubic-bezier(.2,.8,.2,1); }
+.fx-reveal.fx-in { opacity: 1; transform: none; }
+.cat-card.fx-reveal.fx-in:hover, .cat-card.fx-reveal.fx-in.fx-press { transform: translateY(-4px); }
+.fx-reveal.fx-in:is(.menu-card, .cat-banner, .mg-card):is(:hover, .fx-press) { transform: translateY(-3px); }
+.fx-reveal.fx-in { transition: opacity .55s ease, transform .3s cubic-bezier(.2,.8,.2,1), border-color .28s, box-shadow .28s; }
+
+/* —— Skeleton shimmer —— */
+.fx-skel { pointer-events: none; }
+.fx-skel .sk { position: relative; overflow: hidden; background: #151518; }
+.fx-skel .sk::after {
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.07), transparent);
+  transform: translateX(-100%); will-change: transform;
+}
+.fx-skel .sk-thumb { height: 110px; }
+.fx-skel .sk-line { height: 12px; margin: 10px 12px 0; }
+.fx-skel .sk-line.w60 { width: 60%; }
+.fx-skel .sk-line.w40 { width: 40%; }
+.fx-skel .sk-btn { height: 34px; margin: 12px; clip-path: var(--clip-sm); }
+
+/* —— Toast —— */
+.toast:not([hidden]) { animation: fxToastIn .38s cubic-bezier(.2,1.2,.4,1) both; }
+.toast.err { border-color: rgba(244,63,94,.55) !important; }
+@keyframes fxToastIn { from { opacity: 0; transform: translate(-50%, 24px) scale(.96); } to { opacity: 1; transform: translate(-50%, 0) scale(1); } }
+
+/* —— Modal open/close (scale + blur) —— */
+.hh-modal:not([hidden]) { animation: fxModalBg .26s ease both; }
+.hh-modal:not([hidden]) .hh-modal-box { animation: fxModalIn .34s cubic-bezier(.2,1,.3,1) both; }
+.hh-modal.fx-closing { animation: fxModalBgOut .2s ease both; }
+.hh-modal.fx-closing .hh-modal-box { animation: fxModalOut .2s ease both; }
+.profile-menu:not([hidden]) { animation: fxMenuIn .22s cubic-bezier(.2,1,.3,1) both; transform-origin: top right; }
+.profile-menu.from-bottom:not([hidden]) { transform-origin: bottom right; }
+@keyframes fxModalBg { from { opacity: 0; -webkit-backdrop-filter: blur(0); backdrop-filter: blur(0); } to { opacity: 1; } }
+@keyframes fxModalBgOut { to { opacity: 0; } }
+@keyframes fxModalIn { from { opacity: 0; transform: translateY(14px) scale(.92); filter: blur(6px); } to { opacity: 1; transform: none; filter: none; } }
+@keyframes fxModalOut { to { opacity: 0; transform: translateY(8px) scale(.95); filter: blur(4px); } }
+@keyframes fxMenuIn { from { opacity: 0; transform: translateY(-6px) scale(.95); } to { opacity: 1; transform: none; } }
+
+/* —— Motion (only when the user allows it) —— */
+@media (prefers-reduced-motion: no-preference) {
+  .hazard-bar::after { animation: fxStripes 1.6s linear infinite; }
+  .cat-card::before { animation: fxShine 7s ease-in-out infinite; animation-delay: var(--fx-d, 0s); }
+  .cat-card::after { animation: fxEdge 7s ease-in-out infinite; animation-delay: var(--fx-d, 0s); }
+  .cat-card:hover::before { animation-duration: 1.4s; }
+  .hero-art::before { animation: fxSpin 7s linear infinite; }
+  .hero-art::after { animation: fxShine 6s ease-in-out 1.2s infinite; }
+  .btn-primary::after, a.btn-primary::after, .click-pill::after { animation: fxBtnShine 4.2s ease-in-out infinite; }
+  .btn-buy-full::after { animation: fxBtnShine 5s ease-in-out infinite; animation-delay: var(--fx-d, 0s); }
+  .fx-ripple { animation: fxRipple .6s ease-out forwards; }
+  .fx-skel .sk::after { animation: fxSkel 1.3s ease-in-out infinite; }
+  .fx-inview .cat-price, .stat-num { animation: fxPricePulse 2.8s ease-in-out infinite; }
+  .stat-num { animation-duration: 3.6s; }
+}
+@keyframes fxStripes { to { transform: translateX(-22.627px); } }
+@keyframes fxShine { 0%, 62% { transform: translateX(-120%); } 82%, 100% { transform: translateX(120%); } }
+@keyframes fxEdge { 0%, 58% { transform: translateX(-100%); opacity: 0; } 64% { opacity: 1; } 84% { opacity: 1; } 92%, 100% { transform: translateX(240%); opacity: 0; } }
+@keyframes fxSpin { to { transform: translate(-50%, -50%) rotate(360deg); } }
+@keyframes fxBtnShine { 0%, 70% { transform: translateX(-160%) skewX(-18deg); } 92%, 100% { transform: translateX(260%) skewX(-18deg); } }
+@keyframes fxRipple { to { transform: scale(26); opacity: 0; } }
+@keyframes fxSkel { to { transform: translateX(100%); } }
+@keyframes fxPricePulse { 0%, 100% { text-shadow: 0 0 6px rgba(250,204,21,.18); } 50% { text-shadow: 0 0 14px rgba(250,204,21,.6), 0 0 2px rgba(255,240,180,.6); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .fx-reveal { opacity: 1 !important; transform: none !important; transition: none !important; }
+  .hh-modal, .hh-modal-box, .toast, .profile-menu { animation: none !important; }
+  .fx-nav-ind { transition: none; }
+}

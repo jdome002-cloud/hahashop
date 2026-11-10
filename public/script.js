@@ -296,6 +296,8 @@
 
   async function loadHome() {
     loadStats();
+    const hp = document.getElementById("home-products");
+    if (window.HHFx && !hp.children.length) hp.innerHTML = window.HHFx.skeletons(4);
     const { data } = await api("/api/products?sort=newest");
     const list = (data.products || []).slice(0, 4);
     document.getElementById("home-products").innerHTML = list.map((p) => productCard(p)).join("") || "<p class='muted'>ยังไม่มีสินค้า</p>";
@@ -308,6 +310,7 @@
     if (prodState.min !== "") qs.set("min", prodState.min);
     if (prodState.max !== "") qs.set("max", prodState.max);
     qs.set("sort", prodState.sort);
+    if (window.HHFx) document.getElementById("catalog-products").innerHTML = window.HHFx.skeletons(4);
     const { data } = await api("/api/products?" + qs.toString());
     document.getElementById("catalog-products").innerHTML =
       (data.products || []).map((p) => productCard(p)).join("") || "<p class='muted'>ไม่พบสินค้า</p>";
@@ -642,12 +645,22 @@
   function openAuth(pane) {
     closeMenu();
     lastFocus = document.activeElement;
+    modal.classList.remove("fx-closing");
     modal.hidden = false;
     document.body.classList.add("modal-open");
     showPane(pane || "login");
   }
   function closeModal(m) {
-    (m || modal).hidden = true;
+    const el = m || modal;
+    if (el.hidden || el.classList.contains("fx-closing")) return;
+    if (window.HHFx && !window.HHFx.reduce) {
+      el.classList.add("fx-closing");
+      setTimeout(() => { if (!el.classList.contains("fx-closing")) return; el.classList.remove("fx-closing"); el.hidden = true; afterClose(); }, 190);
+      return;
+    }
+    el.hidden = true; afterClose();
+  }
+  function afterClose() {
     if (document.querySelectorAll(".hh-modal:not([hidden])").length === 0) document.body.classList.remove("modal-open");
     if (lastFocus && lastFocus.focus) try { lastFocus.focus(); } catch (_) {}
   }
@@ -899,6 +912,7 @@
     document.getElementById("secret-title").textContent = order.product_title + " #" + order.id;
     document.getElementById("secret-body").textContent = order.delivered || T("contact_admin_delivery");
     const m = document.getElementById("secret-modal");
+    m.classList.remove("fx-closing");
     m.hidden = false; document.body.classList.add("modal-open");
   }
   document.getElementById("secret-copy").addEventListener("click", async () => {
@@ -1356,54 +1370,6 @@
 
 
   /* Lightweight particle field */
-  (function initFx() {
-    const canvas = document.getElementById("fx-canvas");
-    if (!canvas) return;
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)");
-    if (reduce.matches) { canvas.style.display = "none"; return; }
-    const ctx = canvas.getContext("2d");
-    let w = 0, h = 0, particles = [], raf = 0;
-    function resize() {
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      w = window.innerWidth; h = window.innerHeight;
-      canvas.width = Math.floor(w * dpr);
-      canvas.height = Math.floor(h * dpr);
-      canvas.style.width = w + "px";
-      canvas.style.height = h + "px";
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      const n = Math.min(36, Math.floor((w * h) / 28000));
-      particles = Array.from({ length: n }, () => ({
-        x: Math.random() * w,
-        y: Math.random() * h,
-        r: 0.6 + Math.random() * 1.6,
-        vx: (Math.random() - 0.5) * 0.25,
-        vy: -0.15 - Math.random() * 0.35,
-        a: 0.15 + Math.random() * 0.35,
-      }));
-    }
-    function tick() {
-      ctx.clearRect(0, 0, w, h);
-      for (const p of particles) {
-        p.x += p.vx; p.y += p.vy;
-        if (p.y < -4) { p.y = h + 4; p.x = Math.random() * w; }
-        if (p.x < -4) p.x = w + 4;
-        if (p.x > w + 4) p.x = -4;
-        ctx.beginPath();
-        ctx.fillStyle = `rgba(255, 255, 255, ${p.a * 0.7})`;
-        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-        ctx.fill();
-      }
-      raf = requestAnimationFrame(tick);
-    }
-    resize();
-    tick();
-    window.addEventListener("resize", resize, { passive: true });
-    document.addEventListener("visibilitychange", () => {
-      if (document.hidden) cancelAnimationFrame(raf);
-      else tick();
-    });
-  })();
-
   window.addEventListener("hashchange", route);
   ensureCsrf().then(() => refreshMe()).then(async () => { await loadSiteConfig(); route(); });
 })();
