@@ -120,7 +120,7 @@
   }).observe(document.body, { childList: true, subtree: true });
 
   /* ---------- Tap feedback: ripple + press state (touch has no :hover) ---------- */
-  var RIPPLE = ".btn-primary, .btn-buy-full, .click-pill, .btn-search, .btn-oauth, .nav-wallet, .inline-btn, .btn-ghost";
+  var RIPPLE = ".btn-primary, .btn-buy-full, .click-pill, .btn-search, .btn-oauth, .btn-social, .nav-wallet, .inline-btn, .btn-ghost";
   var PRESS = ".cat-card, .menu-card, .cat-banner";
   document.addEventListener("pointerdown", function (e) {
     var b = e.target.closest && e.target.closest(RIPPLE);

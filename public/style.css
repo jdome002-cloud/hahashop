@@ -453,7 +453,7 @@ input:focus, select:focus, textarea:focus {
   border: 1px solid rgba(96, 165, 250, 0.35);
   color: #fff;
   padding: 10px 14px; border-radius: 12px;
-  font-size: 13px; z-index: 90;
+  font-size: 13px; z-index: 260;
   box-shadow: 0 8px 24px rgba(0,0,0,0.4);
   max-width: min(420px, calc(100% - 24px));
 }

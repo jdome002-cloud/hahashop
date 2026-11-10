@@ -717,12 +717,17 @@
     f.reset(); toast(data.message);
   });
 
+  // Social buttons are always shown; unconfigured providers show "coming soon" instead of navigating.
   function applyAuthCfg() {
-    const any = !!(authCfg.discord || authCfg.google);
-    document.querySelectorAll("[data-oauth]").forEach((el) => { el.hidden = !any; });
-    document.querySelectorAll("[data-oauth-google]").forEach((el) => { el.hidden = !authCfg.google; });
-    document.querySelectorAll("[data-oauth-discord]").forEach((el) => { el.hidden = !authCfg.discord; });
+    document.querySelectorAll("[data-oauth-google]").forEach((el) => { el.classList.toggle("is-off", !authCfg.google); });
+    document.querySelectorAll("[data-oauth-discord]").forEach((el) => { el.classList.toggle("is-off", !authCfg.discord); });
   }
+  document.addEventListener("click", (e) => {
+    const b = e.target.closest("[data-oauth-google], [data-oauth-discord]");
+    if (!b) return;
+    const on = b.hasAttribute("data-oauth-google") ? authCfg.google : authCfg.discord;
+    if (!on) { e.preventDefault(); toast(T("coming_soon")); }
+  });
 
   const AUTH_CODES = {
     discord_off: "e_discord_off", google_off: "e_google_off", oauth_cancel: "e_oauth_cancel",

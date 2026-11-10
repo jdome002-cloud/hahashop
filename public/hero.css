@@ -232,3 +232,29 @@ body.drawer-open { overflow: hidden; }
   .blob, .sp, .hero-logo, .hero-logo img, .hero-logo-glow, .live-dot::after, .hero-title .ht-2, .btn-pill::after, .badge-text.typing::after { animation: none !important; }
   .side-drawer, .drawer-backdrop, .search-overlay, .so-box { transition: none !important; }
 }
+
+/* —— Social sign-in buttons (stacked, outline) —— */
+.oauth-stack { display: flex; flex-direction: column; gap: 10px; }
+.oauth-stack[hidden] { display: none; }
+.btn-social {
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  width: 100%; min-height: 52px; padding: 0 18px; border-radius: 16px;
+  background: rgba(15, 23, 42, .35); color: #f1f5f9;
+  border: 1px solid rgba(148, 163, 184, .28);
+  font: inherit; font-size: 15px; font-weight: 600; text-decoration: none; cursor: pointer;
+  transition: border-color .2s, box-shadow .2s, background .2s, transform .12s;
+  -webkit-tap-highlight-color: transparent;
+}
+.btn-social svg { width: 22px; height: 22px; flex: none; }
+.btn-social:active { transform: scale(.985); }
+.btn-social:focus-visible { outline: none; }
+.btn-social.discord:hover, .btn-social.discord:focus-visible, .btn-social.discord:active {
+  border-color: rgba(129, 140, 248, .9); background: rgba(88, 101, 242, .12);
+  box-shadow: 0 0 0 3px rgba(88, 101, 242, .18), 0 0 22px -4px rgba(88, 101, 242, .7);
+}
+.btn-social.google:hover, .btn-social.google:focus-visible, .btn-social.google:active {
+  border-color: rgba(96, 165, 250, .9); background: rgba(59, 130, 246, .10);
+  box-shadow: 0 0 0 3px rgba(66, 133, 244, .16), 0 0 22px -4px rgba(52, 168, 83, .55);
+}
+.btn-social .fx-ripple { background: radial-gradient(circle, rgba(255,255,255,.18), transparent 70%); }
+body.modal-open .toast { bottom: auto; top: calc(env(safe-area-inset-top, 0px) + 14px); }

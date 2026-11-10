@@ -44,7 +44,7 @@
 .hero-art img, .hero-art .hero-cover { position: relative; display: block; clip-path: var(--clip); }
 
 /* —— Buttons: shimmer + ripple —— */
-.btn-primary, a.btn-primary, .btn-buy-full, .click-pill, .btn-search, .btn-oauth, .nav-wallet { position: relative; overflow: hidden; isolation: isolate; }
+.btn-primary, a.btn-primary, .btn-buy-full, .click-pill, .btn-search, .btn-oauth, .btn-social, .nav-wallet { position: relative; overflow: hidden; isolation: isolate; }
 .btn-primary::after, a.btn-primary::after, .btn-buy-full::after, .click-pill::after {
   content: ""; position: absolute; top: 0; bottom: 0; left: 0; width: 60%; pointer-events: none;
   background: linear-gradient(100deg, transparent, rgba(255,255,255,.55), transparent);
@@ -58,7 +58,7 @@
   background: radial-gradient(circle, rgba(250,204,21,.55), rgba(250,204,21,.18) 45%, transparent 70%);
   transform: scale(0); opacity: 1;
 }
-.btn-primary .fx-ripple, .btn-oauth.google .fx-ripple { background: radial-gradient(circle, rgba(0,0,0,.22), rgba(0,0,0,.08) 45%, transparent 70%); }
+.btn-primary .fx-ripple { background: radial-gradient(circle, rgba(0,0,0,.22), rgba(0,0,0,.08) 45%, transparent 70%); }
 .btn-primary:active, .btn-buy-full:active, .click-pill:active { box-shadow: inset 0 0 18px rgba(250,204,21,.35); }
 
 /* —— Price glow —— */

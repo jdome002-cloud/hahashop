@@ -200,15 +200,7 @@ body.modal-open { overflow: hidden; }
 .pane-title { margin: 0 44px 8px 0; font-size: 19px; }
 .row-center { display: flex; justify-content: center; }
 .link-sm { background: none; border: 0; color: var(--yellow); font: inherit; font-size: 13px; cursor: pointer; padding: 6px; text-decoration: underline; text-underline-offset: 3px; }
-.oauth-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.oauth-row[hidden], .or-sep[hidden], .btn-oauth[hidden] { display: none; }
-.oauth-row:has(> .btn-oauth[hidden]) { grid-template-columns: 1fr; }
-.btn-oauth { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 46px; text-decoration: none; font-weight: 600; font-size: 14px;
-  border: 1px solid var(--border-strong); clip-path: var(--clip-sm); }
-.btn-oauth svg { width: 20px; height: 20px; }
-.btn-oauth.google { background: #fff; color: #111; }
-.btn-oauth.discord { background: #5865f2; color: #fff; border-color: #5865f2; }
-.btn-oauth:hover { filter: brightness(1.08); }
+.or-sep[hidden] { display: none; }
 .terms-box { max-height: 128px; overflow-y: auto; padding: 10px 12px; background: rgba(255,255,255,.03); border: 1px solid var(--border);
   font-size: 12px; line-height: 1.6; color: #a1a1aa; clip-path: var(--clip-sm); }
 .terms-box strong { color: #e4e4e7; font-size: 13px; }
