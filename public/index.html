@@ -76,8 +76,6 @@
           <a class="menu-card" href="#/topup"><span class="menu-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect width="20" height="14" x="2" y="5" rx="2"/><path d="M2 10h20"/></svg></span><span data-i18n="topup">เติมเครดิต</span></a>
           <a class="menu-card" href="#/products"><span class="menu-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg></span><span data-i18n="all_products">สินค้าทั้งหมด</span></a>
           <a class="menu-card" href="#/shop"><span class="menu-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m2 7 4.41-4.41A2 2 0 0 1 7.83 2h8.34a2 2 0 0 1 1.42.59L22 7"/><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><path d="M15 22v-4a2 2 0 0 0-2-2h-2a2 2 0 0 0-2 2v4"/><path d="M2 7h20"/></svg></span><span data-i18n="shop">ร้านค้า</span></a>
-          <a class="menu-card" href="#/auction"><span class="menu-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m14 13-8.381 8.38a1 1 0 0 1-3.001-3l8.384-8.381"/><path d="m16 16 6-6"/><path d="m8 8 6-6"/><path d="m9 7 8 8"/><path d="m21 11-8-8"/></svg></span><span data-i18n="auction">ประมูล</span></a>
-          <a class="menu-card" href="#/minigame"><span class="menu-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 12h4"/><path d="M8 10v4"/><path d="M15 13h.01"/><path d="M18 11h.01"/><rect width="20" height="12" x="2" y="6" rx="2"/></svg></span><span data-i18n="minigame">มินิเกมส์</span></a>
           <a class="menu-card" href="#/auth"><span class="menu-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span><span data-i18n="account">บัญชีของฉัน</span></a>
         </div>
       </section>
@@ -141,36 +139,6 @@
     </div>
   </main>
 
-  <!-- AUCTION -->
-  <main class="page-view" id="view-auction" data-view="auction" hidden>
-    <div class="page-pad">
-      <nav class="crumb">หน้าแรก &gt; ประมูล</nav>
-      <h1 class="page-title">ประมูล <span>AUCTION</span></h1>
-      <div id="auction-list" class="auction-list"></div>
-    </div>
-  </main>
-
-  <!-- MINIGAME -->
-  <main class="page-view" id="view-minigame" data-view="minigame" hidden>
-    <div class="page-pad">
-      <nav class="crumb">หน้าแรก &gt; มินิเกม</nav>
-      <h1 class="page-title">มินิเกม <span>MINI-GAME</span></h1>
-      <div id="minigame-list" class="mg-list"></div>
-      <div id="minigame-play" class="mg-play info-card" hidden>
-        <button type="button" class="linkish" id="mg-back">← กลับรายการ</button>
-        <div class="mg-play-art" id="mg-play-art"></div>
-        <h3 id="mg-play-title"></h3>
-        <p class="muted" id="mg-play-price"></p>
-        <button class="btn-primary" id="mg-play-btn" type="button">สุ่มเลย</button>
-        <div class="mg-result" id="mg-result" hidden>
-          <div class="mg-spin" id="mg-spin"><svg class="thumb-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 12h4"/><path d="M8 10v4"/><path d="M15 13h.01"/><path d="M18 11h.01"/><rect width="20" height="12" x="2" y="6" rx="2"/></svg> กำลังสุ่ม...</div>
-          <p id="mg-prize"></p>
-        </div>
-        <p class="form-error" id="mg-error" hidden></p>
-      </div>
-    </div>
-  </main>
-
   <!-- HISTORY -->
   <main class="page-view" id="view-history" data-view="history" hidden>
     <div class="page-pad">
@@ -225,8 +193,6 @@
     <a class="nav-item" data-tab="topup" href="#/topup"><span class="nav-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect width="20" height="14" x="2" y="5" rx="2"/><path d="M2 10h20"/></svg></span><span data-i18n="topup">เติมเครดิต</span></a>
     <a class="nav-item" data-tab="products" href="#/products"><span class="nav-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg></span><span data-i18n="products">สินค้า</span></a>
     <a class="nav-item" data-tab="shop" href="#/shop"><span class="nav-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m2 7 4.41-4.41A2 2 0 0 1 7.83 2h8.34a2 2 0 0 1 1.42.59L22 7"/><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><path d="M15 22v-4a2 2 0 0 0-2-2h-2a2 2 0 0 0-2 2v4"/><path d="M2 7h20"/></svg></span><span data-i18n="shop">ร้านค้า</span></a>
-    <a class="nav-item" data-tab="auction" href="#/auction"><span class="nav-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m14 13-8.381 8.38a1 1 0 0 1-3.001-3l8.384-8.381"/><path d="m16 16 6-6"/><path d="m8 8 6-6"/><path d="m9 7 8 8"/><path d="m21 11-8-8"/></svg></span><span data-i18n="auction">ประมูล</span></a>
-    <a class="nav-item" data-tab="minigame" href="#/minigame"><span class="nav-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 12h4"/><path d="M8 10v4"/><path d="M15 13h.01"/><path d="M18 11h.01"/><rect width="20" height="12" x="2" y="6" rx="2"/></svg></span><span data-i18n="minigame_s">มินิเกม</span></a>
     <a class="nav-item" data-tab="auth" id="nav-login" href="#/auth" data-open-auth="login"><span class="nav-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span><span id="nav-auth-label" data-i18n="login">เข้าสู่ระบบ</span></a>
     <button type="button" class="nav-wallet" id="nav-wallet" hidden aria-haspopup="menu"><strong id="nav-balance">฿0</strong><small id="nav-points">0 pts</small></button>
   </nav>
@@ -244,8 +210,6 @@
           <button type="button" class="admin-tab" data-admin-tab="cover">รูปปก</button>
           <button type="button" class="admin-tab" data-admin-tab="products">สินค้า</button>
           <button type="button" class="admin-tab" data-admin-tab="categories">หมวดหมู่</button>
-          <button type="button" class="admin-tab" data-admin-tab="minigames">มินิเกม</button>
-          <button type="button" class="admin-tab" data-admin-tab="auctions">ประมูล</button>
           <button type="button" class="admin-tab" data-admin-tab="settings">ตั้งค่า</button>
           <button type="button" class="admin-tab" data-admin-tab="users">สมาชิก</button>
           <button type="button" class="admin-tab" data-admin-tab="orders">ออเดอร์</button>
@@ -265,8 +229,6 @@
         </div>
         <div id="atab-products" class="admin-section" hidden></div>
         <div id="atab-categories" class="admin-section" hidden></div>
-        <div id="atab-minigames" class="admin-section" hidden></div>
-        <div id="atab-auctions" class="admin-section" hidden></div>
         <div id="atab-settings" class="admin-section info-card" hidden>
           <h4>ประกาศ / ติดต่อแอดมิน</h4>
           <form id="admin-settings-form" class="form">

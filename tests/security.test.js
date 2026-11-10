@@ -381,3 +381,15 @@ test("body limits and malformed JSON return clean errors (no stack traces)", asy
   r = await c("/api/login", { method: "POST", body: JSON.stringify({ x: "a".repeat(40000) }), headers: { "content-type": "application/json" } });
   assert.equal(r.s, 413);
 });
+
+test("auction and minigame features are disabled (404), admin routes too", async () => {
+  const c = await client().init();
+  for (const p of ["/api/auctions", "/api/minigames", "/api/minigames/1"]) assert.equal((await c(p)).s, 404, p);
+  const u = await signup("nogames_" + H(5)); // logged-in member still gets 404, no balance change
+  const before = (await u("/api/me")).d.user.balance;
+  assert.equal((await post(u, "/api/auctions/1/bid", { amount: 999 })).s, 404);
+  assert.equal((await post(u, "/api/minigames/1/play", {})).s, 404);
+  assert.equal((await u("/api/me")).d.user.balance, before);
+  const admin = await adminClient();
+  for (const p of ["/api/admin/auctions", "/api/admin/minigames"]) assert.equal((await admin(p)).s, 404, p);
+});

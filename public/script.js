@@ -10,7 +10,6 @@
   let currentUser = null;
   let prodState = { q: "", sort: "newest", min: "", max: "", category: "" };
   let priceToggle = "price_asc";
-  let currentMinigame = null;
   let configCats = [];
 
   let csrfToken = "";
@@ -155,8 +154,6 @@
       products: "view-products",
       shop: "view-shop",
       topup: "view-topup",
-      auction: "view-auction",
-      minigame: "view-minigame",
       auth: "view-auth",
       history: "view-history",
       orders: "view-orders",
@@ -188,11 +185,7 @@
       loadProducts();
     } else if (page === "shop") loadShop();
     else if (page === "topup") loadTopup();
-    else if (page === "auction") loadAuctions();
-    else if (page === "minigame") {
-      if (sub) openMinigamePlay(sub);
-      else showMinigameList();
-    } else if (page === "auth") loadAuth();
+    else if (page === "auth") loadAuth();
     else if (page === "history") loadHistory();
     else if (page === "orders") loadOrders();
     else if (page === "admin") loadAdmin();
@@ -204,9 +197,7 @@
     dice: `<svg class="thumb-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect width="12" height="12" x="2" y="10" rx="2"/><path d="m17.92 14 3.5-3.5a2.24 2.24 0 0 0 0-3l-5-4.92a2.24 2.24 0 0 0-3 0L10 6"/><path d="M6 18h.01"/><path d="M10 14h.01"/><path d="M15 6h.01"/><path d="M18 9h.01"/></svg>`,
     gift: `<svg class="thumb-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13"/><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 8a4.8 8 0 0 1 4.5-5 2.5 2.5 0 0 1 0 5"/></svg>`,
     game: `<svg class="thumb-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 12h4"/><path d="M8 10v4"/><path d="M15 13h.01"/><path d="M18 11h.01"/><rect width="20" height="12" x="2" y="6" rx="2"/></svg>`,
-    gavel: `<svg class="thumb-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m14 13-8.381 8.38a1 1 0 0 1-3.001-3l8.384-8.381"/><path d="m16 16 6-6"/><path d="m8 8 6-6"/><path d="m9 7 8 8"/><path d="m21 11-8-8"/></svg>`,
     package: `<svg class="thumb-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="width:12px;height:12px;vertical-align:-1px"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>`,
-    gameBig: `<svg class="thumb-ico big" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 12h4"/><path d="M8 10v4"/><path d="M15 13h.01"/><path d="M18 11h.01"/><rect width="20" height="12" x="2" y="6" rx="2"/></svg>`,
   };
 
   const CAT_STYLE = {
@@ -365,69 +356,6 @@
       </div>`).join("");
   }
 
-  async function loadAuctions() {
-    const { data } = await api("/api/auctions");
-    document.getElementById("auction-list").innerHTML = (data.auctions || []).map((a) => `
-      <div class="auction-card info-card">
-        <div class="auction-row">
-          ${a.image
-            ? `<div class="auction-thumb has-photo"><img src="${escapeHtml(a.image)}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:12px" /></div>`
-            : `<div class="auction-thumb abstract" style="background:linear-gradient(135deg,#1d4ed8,#60a5fa)">${ICO.gavel}</div>`}
-          <div>
-            <h3>${escapeHtml(a.title)}</h3>
-            <p class="muted">${escapeHtml(a.description || "")}</p>
-            <p class="cat-price">บิดปัจจุบัน: ${Number(a.current_bid).toFixed(2)} บาท</p>
-            <p class="muted">ผู้บิดล่าสุด: ${escapeHtml(a.current_bidder || "-")}</p>
-            ${a.example ? '<span class="badge-demo">ตัวอย่าง</span>' : ""}
-          </div>
-        </div>
-        <form class="form bid-form" data-aid="${a.id}">
-          <label>เสนอราคา (บาท)
-            <input name="amount" type="number" min="${Number(a.current_bid) + 1}" step="1" required placeholder="มากกว่า ${a.current_bid}" />
-          </label>
-          <button class="btn-primary" type="submit">เสนอราคา</button>
-        </form>
-      </div>`).join("") || "<p class='muted'>ยังไม่มีรายการประมูล</p>";
-  }
-
-  async function showMinigameList() {
-    document.getElementById("minigame-list").hidden = false;
-    document.getElementById("minigame-play").hidden = true;
-    const { data } = await api("/api/minigames");
-    document.getElementById("minigame-list").innerHTML = (data.minigames || []).map((g) => `
-      <a class="mg-card" href="#/minigame/${g.id}">
-        ${g.image
-          ? `<div class="mg-art has-photo"><img src="${escapeHtml(g.image)}" alt="" style="width:100%;height:100%;object-fit:cover" /></div>`
-          : `<div class="mg-art abstract" style="background:linear-gradient(135deg,#059669,#34d399)">${ICO.gameBig}</div>`}
-        <div class="mg-body">
-          <h3>${escapeHtml(g.title)}</h3>
-          <p class="cat-price">${Number(g.price).toFixed(2)} บาท / ครั้ง</p>
-          ${g.example ? '<span class="badge-demo">ตัวอย่าง</span>' : ""}
-        </div>
-      </a>`).join("");
-  }
-
-  async function openMinigamePlay(id) {
-    document.getElementById("minigame-list").hidden = true;
-    const panel = document.getElementById("minigame-play");
-    panel.hidden = false;
-    document.getElementById("mg-result").hidden = true;
-    document.getElementById("mg-error").hidden = true;
-    const { data } = await api("/api/minigames/" + id);
-    if (!data.ok) { toast(data.message || "ไม่พบมินิเกม", true); location.hash = "#/minigame"; return; }
-    currentMinigame = data.minigame;
-    document.getElementById("mg-play-title").textContent = data.minigame.title;
-    document.getElementById("mg-play-price").textContent = Number(data.minigame.price).toFixed(2) + " บาท / ครั้ง";
-    const art = document.getElementById("mg-play-art");
-    if (data.minigame.image) {
-      art.style.background = "none";
-      art.innerHTML = `<img src="${escapeHtml(data.minigame.image)}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:12px" />`;
-    } else {
-      art.style.background = "linear-gradient(135deg,#059669,#34d399)";
-      art.innerHTML = ICO.gameBig;
-    }
-  }
-
   // Events
   document.addEventListener("click", async (e) => {
     const cat = e.target.closest("[data-cat]");
@@ -520,49 +448,6 @@
       }
     } catch { err.textContent = "เชื่อมต่อเซิร์ฟเวอร์ไม่สำเร็จ"; err.hidden = false; }
     finally { btn.disabled = false; btn.textContent = "เติมเครดิตเลย"; }
-  });
-
-  document.getElementById("auction-list").addEventListener("submit", async (e) => {
-    const form = e.target.closest(".bid-form");
-    if (!form) return;
-    e.preventDefault();
-    if (!currentUser) { toast("กรุณาเข้าสู่ระบบก่อนประมูล", true); openAuth("login"); return; }
-    const amount = Number(new FormData(form).get("amount"));
-    const { res, data } = await api("/api/auctions/" + form.getAttribute("data-aid") + "/bid", {
-      method: "POST",
-      body: JSON.stringify({ amount }),
-    });
-    if (!res.ok || !data.ok) { toast(data.message || "ประมูลไม่สำเร็จ", true); return; }
-    currentUser = data.user || currentUser;
-    updateChrome();
-    toast(data.message || "เสนอราคาสำเร็จ");
-    loadAuctions();
-  });
-
-  document.getElementById("mg-back").addEventListener("click", () => { location.hash = "#/minigame"; });
-  document.getElementById("mg-play-btn").addEventListener("click", async () => {
-    if (!currentUser) { toast("กรุณาเข้าสู่ระบบก่อนเล่น", true); openAuth("login"); return; }
-    if (!currentMinigame) return;
-    const err = document.getElementById("mg-error");
-    const result = document.getElementById("mg-result");
-    err.hidden = true;
-    result.hidden = false;
-    document.getElementById("mg-spin").classList.add("spinning");
-    document.getElementById("mg-prize").textContent = "กำลังสุ่ม...";
-    const { res, data } = await api("/api/minigames/" + currentMinigame.id + "/play", { method: "POST", body: "{}" });
-    setTimeout(() => {
-      document.getElementById("mg-spin").classList.remove("spinning");
-      if (!res.ok || !data.ok) {
-        result.hidden = true;
-        err.textContent = data.message || "เล่นไม่สำเร็จ";
-        err.hidden = false;
-        return;
-      }
-      currentUser = data.user;
-      updateChrome();
-      document.getElementById("mg-prize").textContent = data.prize;
-      toast("สุ่มได้: " + data.prize);
-    }, 900);
   });
 
   /* —— Auth modal / captcha / profile menu (v3) —— */
@@ -886,7 +771,7 @@
     if (ae) { ae.hidden = !currentUser.isAdmin; ae.style.display = currentUser.isAdmin ? "block" : "none"; }
   }
 
-  const REASON = { topup: "r_topup", purchase: "r_purchase", minigame: "r_minigame", minigame_prize: "r_minigame_prize",
+  const REASON = { topup: "r_topup", purchase: "r_purchase", minigame: "r_minigame",
     admin_adjust: "r_admin", admin_bootstrap: "r_admin", opening_balance: "r_opening", refund: "r_refund" };
   async function loadHistory() {
     const box = document.getElementById("history-list");
@@ -981,8 +866,6 @@
     if (name === "dash") renderAdminDash();
     if (name === "products") renderAdminProducts();
     if (name === "categories") renderAdminCategories();
-    if (name === "minigames") renderAdminMinigames();
-    if (name === "auctions") renderAdminAuctions();
     if (name === "settings") renderAdminSettings();
     if (name === "users") renderAdminUsers();
     if (name === "orders") renderAdminOrders();
@@ -1178,78 +1061,6 @@
     if (!res.ok||!data.ok){ toast(data.message||"ไม่สำเร็จ",true); return; }
     toast("บันทึกหมวดแล้ว"); f.reset(); f.id.readOnly=false; f.edit_id.value="";
     await loadSiteConfig(); renderAdminCategories();
-  });
-
-  async function renderAdminMinigames() {
-    const { data } = await api("/api/admin/minigames");
-    const box = document.getElementById("atab-minigames");
-    box.innerHTML = `<div class="info-card"><h4>มินิเกม</h4>
-      <form id="admin-mg-form" class="form">
-        <input type="hidden" name="id" />
-        <label>ชื่อ<input name="title" required /></label>
-        <label>slug<input name="slug" placeholder="skin-random" /></label>
-        <label>คำอธิบาย<input name="subtitle" /></label>
-        <label>ราคา / ครั้ง<input name="price" type="number" step="0.01" required /></label>
-        <label>รางวัล (บรรทัดละ ชื่อ|น้ำหนัก)<textarea name="prizes" rows="4" placeholder="เกลือ|40\nรางวัลใหญ่|5"></textarea></label>
-        <label>รูป (ถ้ามี)<input type="file" name="image" accept="image/*" data-image-input /></label>
-        <button class="btn-primary" type="submit">บันทึกมินิเกม</button>
-      </form></div>
-      <div class="info-card" style="margin-top:12px">${(data.minigames||[]).map(g=>`
-        <div class="admin-row"><div><strong>${escapeHtml(g.title)}</strong> · ${Number(g.price).toFixed(2)} บาท
-          <div class="muted">${(g.prizes||[]).map(p=>escapeHtml(p.label)+'('+p.weight+')').join(', ')}</div></div>
-          <div class="admin-actions">
-            <button type="button" data-edit-mg='${escapeHtml(JSON.stringify(g))}'>แก้ไข</button>
-            <button type="button" class="danger" data-del-mg="${g.id}">ลบ</button>
-          </div></div>`).join("")}</div>`;
-  }
-  document.getElementById("atab-minigames").addEventListener("click", async (e) => {
-    const del=e.target.closest("[data-del-mg]");
-    if(del){ if(!armDelete(del)) return; const {res,data}=await api("/api/admin/minigames/"+del.getAttribute("data-del-mg"),{method:"DELETE"}); toast(data.message||(res.ok?"ลบแล้ว":"ลบไม่สำเร็จ"), !res.ok); renderAdminMinigames(); return; }
-    const ed=e.target.closest("[data-edit-mg]");
-    if(ed){ const g=JSON.parse(ed.getAttribute("data-edit-mg")); const f=document.getElementById("admin-mg-form");
-      f.id.value=g.id; f.title.value=g.title; f.slug.value=g.slug; f.subtitle.value=g.subtitle||""; f.price.value=g.price;
-      f.prizes.value=(g.prizes||[]).map(p=>`${p.label}|${p.weight}`).join("\n"); }
-  });
-  document.getElementById("atab-minigames").addEventListener("submit", async (e) => {
-    if (e.target.getAttribute("id")!=="admin-mg-form") return; e.preventDefault();
-    const f=e.target; const fd=new FormData(f); const id=fd.get("id"); fd.delete("id");
-    const { res, data }=await apiForm(id?("/api/admin/minigames/"+id):"/api/admin/minigames",{method:id?"PUT":"POST",formData:fd}); if(!res.ok||!data.ok){toast(data.message||"ไม่สำเร็จ",true);return;}
-    toast("บันทึกแล้ว"); f.reset(); renderAdminMinigames();
-  });
-
-  async function renderAdminAuctions() {
-    const { data } = await api("/api/admin/auctions");
-    const box = document.getElementById("atab-auctions");
-    box.innerHTML = `<div class="info-card"><h4>ประมูล</h4>
-      <form id="admin-auc-form" class="form">
-        <input type="hidden" name="id" />
-        <label>ชื่อรายการ<input name="title" required /></label>
-        <label>รายละเอียด<textarea name="description" rows="2"></textarea></label>
-        <label>ราคาเปิด<input name="start_price" type="number" step="0.01" required /></label>
-        <label>หมดเขต (YYYY-MM-DD HH:MM)<input name="ends_at" placeholder="2026-12-31 23:59" /></label>
-        <label>รูป (ถ้ามี)<input type="file" name="image" accept="image/*" data-image-input /></label>
-        <button class="btn-primary" type="submit">บันทึกประมูล</button>
-      </form></div>
-      <div class="info-card" style="margin-top:12px">${(data.auctions||[]).map(a=>`
-        <div class="admin-row"><div><strong>${escapeHtml(a.title)}</strong>
-          <div class="muted">เปิด ${a.start_price} · ปัจจุบัน ${a.current_bid}${a.image?" · มีรูป":""}</div></div>
-          <div class="admin-actions">
-            <button type="button" data-edit-auc='${escapeHtml(JSON.stringify(a))}'>แก้ไข</button>
-            <button type="button" class="danger" data-del-auc="${a.id}">ลบ</button>
-          </div></div>`).join("")}</div>`;
-  }
-  document.getElementById("atab-auctions").addEventListener("click", async (e) => {
-    const del=e.target.closest("[data-del-auc]");
-    if(del){ if(!armDelete(del)) return; await api("/api/admin/auctions/"+del.getAttribute("data-del-auc"),{method:"DELETE"}); toast("ลบแล้ว"); renderAdminAuctions(); return; }
-    const ed=e.target.closest("[data-edit-auc]");
-    if(ed){ const a=JSON.parse(ed.getAttribute("data-edit-auc")); const f=document.getElementById("admin-auc-form");
-      f.id.value=a.id; f.title.value=a.title; f.description.value=a.description||""; f.start_price.value=a.start_price; f.ends_at.value=a.ends_at||""; }
-  });
-  document.getElementById("atab-auctions").addEventListener("submit", async (e) => {
-    if(e.target.getAttribute("id")!=="admin-auc-form") return; e.preventDefault();
-    const f=e.target; const fd=new FormData(f); const id=fd.get("id"); fd.delete("id");
-    const { res, data }=await apiForm(id?("/api/admin/auctions/"+id):"/api/admin/auctions",{method:id?"PUT":"POST",formData:fd}); if(!res.ok||!data.ok){toast(data.message||"ไม่สำเร็จ",true);return;}
-    toast("บันทึกแล้ว"); f.reset(); renderAdminAuctions();
   });
 
   async function renderAdminSettings() {

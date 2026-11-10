@@ -101,11 +101,10 @@ input::placeholder, textarea::placeholder { color: #5f5f68; font-family: var(--m
   width: 100%; margin-top: 4px; padding: 12px; background: #121214; color: #e5e5e5;
   border: 1px solid var(--border-strong); clip-path: var(--clip); font-weight: 600; cursor: pointer;
 }
-.btn-buy-full, .btn-bid, .btn-search, .mg-play {
+.btn-buy-full, .btn-search {
   background: #f4f4f5 !important; color: #000 !important; border-radius: 0 !important;
   clip-path: var(--clip-sm); box-shadow: none !important; font-weight: 700;
 }
-.mg-play { background: var(--yellow) !important; }
 
 /* Inputs everywhere */
 input:not([type=file]):not([type=checkbox]):not([type=radio]), select, textarea {
@@ -115,7 +114,7 @@ input:not([type=file]):not([type=checkbox]):not([type=radio]), select, textarea 
 input:focus, select:focus, textarea:focus { outline: none; border-color: #6b6b73 !important; }
 
 /* Cards: dark, clipped */
-.info-card, .stat-card, .menu-card, .cat-card, .filter-box, .auction-row, .mg-card, .tx-item,
+.info-card, .stat-card, .menu-card, .cat-card, .filter-box, .tx-item,
 .admin-row, .admin-stats .stat, .auth-card, .modal-card {
   background: rgba(14, 14, 16, 0.88) !important;
   border: 1px solid rgba(255,255,255,0.08) !important;
@@ -132,7 +131,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: #6b6b73
 .cat-price, .tx-item .amt, .detail-price { color: var(--yellow) !important; }
 .inst-badge { background: #fff; color: #000; }
 .thumb-code { background: rgba(0,0,0,0.35); }
-.cat-thumb, .auction-thumb, .mg-art { background: #18181b !important; }
+.cat-thumb { background: #18181b !important; }
 .cat-thumb.abstract { background: linear-gradient(135deg, #1c1c1f, #2a2a2e) !important; }
 .cat-banner { border-radius: 0 !important; clip-path: var(--clip); }
 .click-pill { background: #fff; color: #000; border: none; border-radius: 0; clip-path: var(--clip-sm); }
@@ -296,7 +295,7 @@ body.modal-open { overflow: hidden; }
 .pm-logout svg { color: #fca5a5 !important; }
 
 /* bottom-nav wallet pill */
-body.logged-in .bottom-nav { grid-template-columns: repeat(6, 1fr) 1.55fr; }
+body.logged-in .bottom-nav { grid-template-columns: repeat(4, 1fr) 1.35fr; }
 .bottom-nav .nav-item[hidden] { display: none; }
 .nav-wallet { margin: 0 4px 0 2px; height: 44px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; min-width: 0;
   background: rgba(250,204,21,.1); border: 1px solid rgba(250,204,21,.45); color: var(--yellow); clip-path: var(--clip-sm); cursor: pointer; font: inherit; padding: 0 4px; }
@@ -331,3 +330,10 @@ body.logged-in .bottom-nav { grid-template-columns: repeat(6, 1fr) 1.55fr; }
 .admin-thumb.none { display: inline-block; background: repeating-linear-gradient(45deg, #18181b 0 6px, #111113 6px 12px); }
 .diag { white-space: pre-wrap; font-size: 12px; background: #000; border: 1px solid var(--border); padding: 10px; color: #d4d4d8; }
 .ledger-row .amt { display: flex; flex-direction: column; align-items: flex-end; font-weight: 700; }
+
+/* v6: five-item bottom nav (home · top up · products · shop · account) */
+.bottom-nav .nav-item { font-size: 11px; gap: 4px; }
+.bottom-nav .nav-ico svg { width: 22px; height: 22px; }
+.nav-wallet strong { font-size: 13px; }
+.nav-wallet small { font-size: 10px; }
+.menu-card { flex-direction: row !important; justify-content: center; padding: 16px 12px !important; }

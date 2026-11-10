@@ -1,7 +1,7 @@
 /* ===== HAHA SHOP — effects layer (v5). Everything animated uses transform/opacity where possible. ===== */
 
 /* Perf: cards sit over an animated canvas; backdrop blur would re-blur every frame. Cards are ~opaque anyway. */
-.cat-card, .product-card, .mg-card, .auction-row, .filter-box, .auth-card, .panel, .modal-card, .tx-item,
+.cat-card, .product-card, .filter-box, .auth-card, .panel, .modal-card, .tx-item,
 .info-card, .stat-card, .menu-card { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
 #fx-canvas { opacity: 1 !important; }
 
@@ -32,8 +32,8 @@
 }
 .cat-thumb.has-photo img { transition: transform .5s cubic-bezier(.2,.8,.2,1); }
 .cat-card:hover .cat-thumb.has-photo img, .cat-card.fx-press .cat-thumb.has-photo img { transform: scale(1.05); }
-.menu-card, .stat-card, .cat-banner, .mg-card { transition: transform .25s cubic-bezier(.2,.8,.2,1), border-color .25s; }
-.menu-card:hover, .menu-card.fx-press, .cat-banner:hover, .cat-banner.fx-press, .mg-card:hover, .mg-card.fx-press { transform: translateY(-3px); border-color: rgba(250,204,21,.4) !important; }
+.menu-card, .stat-card, .cat-banner { transition: transform .25s cubic-bezier(.2,.8,.2,1), border-color .25s; }
+.menu-card:hover, .menu-card.fx-press, .cat-banner:hover, .cat-banner.fx-press { transform: translateY(-3px); border-color: rgba(250,204,21,.4) !important; }
 .menu-card:hover .menu-icon, .menu-card.fx-press .menu-icon { box-shadow: 0 0 18px rgba(250,204,21,.35); border-color: rgba(250,204,21,.6); color: var(--yellow); }
 .menu-icon { transition: box-shadow .25s, border-color .25s, color .25s; }
 
@@ -89,7 +89,7 @@
 .fx-reveal { opacity: 0; transform: translateY(18px); transition: opacity .55s ease, transform .6s cubic-bezier(.2,.8,.2,1); }
 .fx-reveal.fx-in { opacity: 1; transform: none; }
 .cat-card.fx-reveal.fx-in:hover, .cat-card.fx-reveal.fx-in.fx-press { transform: translateY(-4px); }
-.fx-reveal.fx-in:is(.menu-card, .cat-banner, .mg-card):is(:hover, .fx-press) { transform: translateY(-3px); }
+.fx-reveal.fx-in:is(.menu-card, .cat-banner):is(:hover, .fx-press) { transform: translateY(-3px); }
 .fx-reveal.fx-in { transition: opacity .55s ease, transform .3s cubic-bezier(.2,.8,.2,1), border-color .28s, box-shadow .28s; }
 
 /* —— Skeleton shimmer —— */

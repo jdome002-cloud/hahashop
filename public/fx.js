@@ -83,7 +83,7 @@
   })();
 
   /* ---------- Scroll reveal + in-view flag (price glow only runs for visible cards) ---------- */
-  var REVEAL = ".cat-card, .stat-card, .menu-card, .cat-banner, .mg-card, .auction-card, .hero, .section-head, #view-history .info-card, #view-orders .info-card, .profile-card";
+  var REVEAL = ".cat-card, .stat-card, .menu-card, .cat-banner, .hero, .section-head, #view-history .info-card, #view-orders .info-card, .profile-card";
   var io = ("IntersectionObserver" in window) ? new IntersectionObserver(function (entries) {
     entries.forEach(function (e) {
       var el = e.target;
@@ -119,7 +119,7 @@
 
   /* ---------- Tap feedback: ripple + press state (touch has no :hover) ---------- */
   var RIPPLE = ".btn-primary, .btn-buy-full, .click-pill, .btn-search, .btn-oauth, .nav-wallet, .inline-btn, .btn-ghost";
-  var PRESS = ".cat-card, .menu-card, .cat-banner, .mg-card";
+  var PRESS = ".cat-card, .menu-card, .cat-banner";
   document.addEventListener("pointerdown", function (e) {
     var b = e.target.closest && e.target.closest(RIPPLE);
     if (b && !b.disabled && !reduce) {
