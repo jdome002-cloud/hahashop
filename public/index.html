@@ -137,6 +137,19 @@
     <div class="page-pad">
       <nav class="crumb">หน้าแรก &gt; เติมเครดิต</nav>
       <h1 class="page-title">เติมเครดิต <span>TOP-UP</span></h1>
+      <p class="pm-label" data-i18n="pay_method">เลือกช่องทางเติมเครดิต</p>
+      <div class="pay-methods" role="radiogroup" aria-label="Top-up method">
+        <button type="button" class="pay-card active" role="radio" aria-checked="true" data-pay="truemoney">
+          <span class="pay-ico tm" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12V8H6a2 2 0 0 1 0-4h12v4"/><path d="M4 6v12a2 2 0 0 0 2 2h14v-4"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg></span>
+          <span class="pay-txt"><b data-i18n="tm_title">ซองอั่งเปา TrueMoney</b><small data-i18n="pay_tm_sub">เติมทันที อัตโนมัติ</small></span>
+          <span class="pay-badge on" data-i18n="pay_active">ใช้งานได้</span>
+        </button>
+        <button type="button" class="pay-card off" role="radio" aria-checked="false" data-pay="kbank" data-pay-off>
+          <span class="pay-ico kb" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6v12"/><path d="M16 6l-6 6 6 6"/></svg></span>
+          <span class="pay-txt"><b data-i18n="pay_kbank">ธนาคารกสิกรไทย (KBank)</b><small data-i18n="pay_kbank_sub">โอนผ่านบัญชีธนาคาร</small></span>
+          <span class="pay-badge soon" data-i18n="pay_soon">ยังไม่พร้อมใช้งาน</span>
+        </button>
+      </div>
       <div class="info-card">
         <h4 data-i18n="tm_title">ซองอั่งเปา TrueMoney</h4>
         <p class="muted">วางลิงก์ เช่น <code>https://gift.truemoney.com/campaign/?v=...</code></p>

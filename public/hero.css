@@ -258,3 +258,28 @@ body.drawer-open { overflow: hidden; }
 }
 .btn-social .fx-ripple { background: radial-gradient(circle, rgba(255,255,255,.18), transparent 70%); }
 body.modal-open .toast { bottom: auto; top: calc(env(safe-area-inset-top, 0px) + 14px); }
+
+/* —— Top-up method cards —— */
+.pm-label { margin: 0 0 8px; font-size: 13px; color: var(--muted); }
+.pay-methods { display: grid; grid-template-columns: 1fr; gap: 10px; margin-bottom: 14px; }
+.pay-card {
+  position: relative; display: flex; align-items: center; gap: 12px; width: 100%;
+  padding: 12px 14px; border-radius: 16px; text-align: left; cursor: pointer;
+  background: rgba(15, 23, 42, .45); border: 1px solid rgba(148, 163, 184, .25); color: #f1f5f9; font: inherit;
+  transition: border-color .2s, box-shadow .2s, transform .12s;
+}
+.pay-card:active { transform: scale(.985); }
+.pay-card.active { border-color: rgba(249, 115, 22, .75); box-shadow: 0 0 0 3px rgba(249, 115, 22, .14), 0 0 22px -6px rgba(249, 115, 22, .6); }
+.pay-card.off { opacity: .78; }
+.pay-card.off:hover, .pay-card.off:focus-visible { border-color: rgba(34, 197, 94, .55); outline: none; }
+.pay-ico { width: 42px; height: 42px; border-radius: 50%; flex: none; display: grid; place-items: center; color: #fff; }
+.pay-ico svg { width: 21px; height: 21px; }
+.pay-ico.tm { background: linear-gradient(135deg, #f97316, #ea580c); box-shadow: 0 4px 14px -4px rgba(249,115,22,.7); }
+.pay-ico.kb { background: radial-gradient(circle at 30% 25%, #4ade80, #16a34a 55%, #14532d); box-shadow: 0 4px 14px -4px rgba(22,163,74,.7); }
+.pay-card.off .pay-ico { filter: saturate(.75); }
+.pay-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.pay-txt b { font-size: 14.5px; font-weight: 700; }
+.pay-txt small { font-size: 12px; color: var(--muted); }
+.pay-badge { flex: none; font-size: 11px; font-weight: 700; padding: 4px 9px; border-radius: 999px; white-space: nowrap; }
+.pay-badge.on { color: #86efac; background: rgba(34,197,94,.12); border: 1px solid rgba(34,197,94,.4); }
+.pay-badge.soon { color: #cbd5e1; background: rgba(148,163,184,.12); border: 1px solid rgba(148,163,184,.35); }

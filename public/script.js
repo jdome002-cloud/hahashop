@@ -722,6 +722,11 @@
     document.querySelectorAll("[data-oauth-google]").forEach((el) => { el.classList.toggle("is-off", !authCfg.google); });
     document.querySelectorAll("[data-oauth-discord]").forEach((el) => { el.classList.toggle("is-off", !authCfg.discord); });
   }
+  // Top-up methods: only TrueMoney works; others are display-only and never call the server.
+  document.addEventListener("click", (e) => {
+    const c = e.target.closest("[data-pay-off]");
+    if (c) { e.preventDefault(); toast(T("pay_soon")); }
+  });
   document.addEventListener("click", (e) => {
     const b = e.target.closest("[data-oauth-google], [data-oauth-discord]");
     if (!b) return;

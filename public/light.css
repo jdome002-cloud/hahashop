@@ -107,3 +107,8 @@ html[data-theme="light"] .btn-social.google:hover, html[data-theme="light"] .btn
 html[data-theme="light"] .btn-social .fx-ripple { background: radial-gradient(circle, rgba(15,23,42,.12), transparent 70%); }
 html[data-theme="light"] .or-sep { color: #64748b; }
 html[data-theme="light"] .or-sep::before, html[data-theme="light"] .or-sep::after { background: rgba(15,23,42,.12); }
+html[data-theme="light"] .pay-card { background: #fff; color: #0f172a; border-color: rgba(100,116,139,.3); }
+html[data-theme="light"] .pay-card.active { border-color: #ea580c; box-shadow: 0 0 0 3px rgba(234,88,12,.12); }
+html[data-theme="light"] .pay-card.off:hover { border-color: #16a34a; }
+html[data-theme="light"] .pay-badge.on { color: #15803d; background: #f0fdf4; border-color: rgba(21,128,61,.35); }
+html[data-theme="light"] .pay-badge.soon { color: #475569; background: #f1f5f9; border-color: rgba(71,85,105,.3); }
