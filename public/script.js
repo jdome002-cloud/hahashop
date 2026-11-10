@@ -101,12 +101,7 @@
     modal.querySelectorAll("[data-captcha]").forEach((b) => { if (captchaCfg.type !== "turnstile") { b.innerHTML = ""; } });
     if (!modal.hidden) { const f = modal.querySelector(".mpane:not([hidden]) form"); if (f) renderCaptcha(f); }
   });
-  document.getElementById("quick-search")?.addEventListener("submit", (e) => {
-    e.preventDefault();
-    prodState.q = (document.getElementById("quick-q").value || "").trim().slice(0, 80);
-    prodState._fromFilter = true;
-    if (location.hash === "#/products") loadProducts(); else location.hash = "#/products";
-  });
+
 
   function toast(msg, isErr) {
     const el = document.getElementById("toast");

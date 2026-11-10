@@ -2,10 +2,7 @@
 (function () {
   var DICT = {
     th: {
-      brand_sub: "ร้านขายไอดีฟีฟาย", credit: "เครดิต",
-      tagline: "ร้านไอดีฟีฟาย ปลอดภัย ได้ไว หัวเราะได้ทุกดีล",
-      search_ph: "FF-ID / ชื่อสินค้า", search: "ค้นหา", cta_shop: "เลือกซื้อไอดีเลย",
-      helper_home: "เติมเครดิตด้วยซองอั่งเปา TrueMoney · ระบบส่งไอดีอัตโนมัติ",
+      brand_sub: "ร้านขายไอดีฟีฟาย", credit: "เครดิต", search: "ค้นหา",
       st_users: "ผู้ใช้ทั้งหมด", st_products: "สินค้าทั้งหมด", st_stock: "สต็อกพร้อมส่ง", st_done: "ทำรายการสำเร็จ",
       menu: "เมนูแนะนำ", featured: "สินค้าแนะนำ",
       topup: "เติมเครดิต", all_products: "สินค้าทั้งหมด", shop: "ร้านค้า", auction: "ประมูล",
@@ -31,10 +28,7 @@
       prod_ph: "ค้นหาชื่อสินค้า / รหัส เช่น FF 6297", lang: "ไทย"
     },
     en: {
-      brand_sub: "Free Fire ID Store", credit: "Credit",
-      tagline: "Safe, fast Free Fire IDs, with a laugh on every deal",
-      search_ph: "FF-ID / product name", search: "Search", cta_shop: "Shop IDs now",
-      helper_home: "Top up with TrueMoney angpao · instant ID delivery",
+      brand_sub: "Free Fire ID Store", credit: "Credit", search: "Search",
       st_users: "Total users", st_products: "Products", st_stock: "In stock", st_done: "Completed",
       menu: "Quick menu", featured: "Featured",
       topup: "Top up", all_products: "All products", shop: "Shop", auction: "Auction",
