@@ -31,7 +31,19 @@ services:
         sync: false
       - key: DISCORD_CLIENT_SECRET
         sync: false
-      # SMTP for forgot-password emails (leave empty to disable; admin can reset passwords instead)
+      # Google OAuth (redirect URI: https://hahashop.onrender.com/auth/google/callback)
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      # Cloudflare Turnstile captcha (optional; built-in image captcha is used when empty)
+      - key: TURNSTILE_SITE_KEY
+        sync: false
+      - key: TURNSTILE_SECRET_KEY
+        sync: false
+      # SMTP for signup verification + forgot-password emails.
+      # Gmail: SMTP_HOST=smtp.gmail.com SMTP_PORT=587 SMTP_USER=<gmail> SMTP_PASS=<16-char app password> MAIL_FROM=<gmail>
+      # When SMTP is set, new members must verify their email before topping up / buying.
       - key: SMTP_HOST
         sync: false
       - key: SMTP_PORT
@@ -46,8 +58,7 @@ services:
       # --- Paid starter (or higher): uncomment disk + path env vars ---
       # - key: DATA_DIR
       #   value: /var/data
-      # - key: UPLOAD_DIR
-      #   value: /var/data/uploads
+      # (images are stored inside the SQLite database, so only DATA_DIR is needed)
 
     # disk:
     #   name: hahashop-data

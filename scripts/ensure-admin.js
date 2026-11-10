@@ -9,7 +9,7 @@ const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
 const bcrypt = require("bcryptjs");
-const { db } = require("../lib/db");
+const { db, applyBalance } = require("../lib/db");
 
 const ROOT = path.join(__dirname, "..");
 const CRED_FILE = path.join(ROOT, "ADMIN-LOGIN.txt");
@@ -22,10 +22,13 @@ const BALANCE_FLAG = "admin_balance_500_v1";
 
 function applyStartBalanceOnce() {
   if (db.prepare("SELECT 1 FROM settings WHERE key = ?").get(BALANCE_FLAG)) return;
-  const admin = db.prepare("SELECT id FROM users WHERE role = 'admin'").get();
+  const admin = db.prepare("SELECT id, balance FROM users WHERE role = 'admin'").get();
   if (!admin) return;
-  db.prepare("UPDATE users SET balance = ? WHERE id = ?").run(ADMIN_START_BALANCE, admin.id);
-  db.prepare("INSERT OR IGNORE INTO settings (key, value) VALUES (?, '1')").run(BALANCE_FLAG);
+  db.transaction(() => {
+    const delta = ADMIN_START_BALANCE - Number(admin.balance || 0);
+    if (Math.abs(delta) >= 0.005) applyBalance(admin.id, delta, { reason: "admin_bootstrap", ref: "start_balance" });
+    db.prepare("INSERT OR IGNORE INTO settings (key, value) VALUES (?, '1')").run(BALANCE_FLAG);
+  })();
 }
 
 function genPassword() {
@@ -90,7 +93,7 @@ function ensureAdminInner() {
     demoteExtraAdmins(null);
     db.prepare(
       `INSERT INTO users (username, password_hash, balance, role) VALUES (?, ?, ?, 'admin')`
-    ).run(USERNAME, envHash, ADMIN_START_BALANCE);
+    ).run(USERNAME, envHash, 0);
     console.log("Admin account created from ADMIN_PASSWORD_HASH");
     return { created: true, fromEnv: true };
   }
@@ -101,7 +104,7 @@ function ensureAdminInner() {
     demoteExtraAdmins(null);
     db.prepare(
       `INSERT INTO users (username, password_hash, balance, role) VALUES (?, ?, ?, 'admin')`
-    ).run(USERNAME, hash, ADMIN_START_BALANCE);
+    ).run(USERNAME, hash, 0);
     console.log("Admin account created from ADMIN_PASSWORD");
     return { created: true, fromEnv: true };
   }
@@ -120,7 +123,7 @@ function ensureAdminInner() {
   } else {
     db.prepare(
       `INSERT INTO users (username, password_hash, balance, role) VALUES (?, ?, ?, 'admin')`
-    ).run(USERNAME, hash, ADMIN_START_BALANCE);
+    ).run(USERNAME, hash, 0);
   }
   writeCreds(USERNAME, password);
   console.log(`Admin account created. Credentials written to ${CRED_FILE}`);

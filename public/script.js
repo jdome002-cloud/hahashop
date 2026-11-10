@@ -67,6 +67,9 @@
   }
 
   async function apiForm(path, { method = "POST", formData } = {}) {
+    if (window.HHImage) {
+      try { formData = await window.HHImage.prepareFormData(formData); } catch (_) {}
+    }
     const t = await ensureCsrf();
     const res = await fetch(path, {
       method,
@@ -83,7 +86,7 @@
     if (ct.includes("application/json")) {
       try { data = await res.json(); } catch (_) {}
     } else {
-      data = { ok: false, message: "อัปโหลดไม่สำเร็จ (ตอบกลับไม่ใช่ JSON)" };
+      data = { ok: false, message: res.status === 413 ? "ไฟล์ใหญ่เกินไป (สูงสุด 12MB)" : `อัปโหลดไม่สำเร็จ (HTTP ${res.status})` };
     }
     if (data && data.csrfToken) csrfToken = data.csrfToken;
     return { res, data };
@@ -93,6 +96,10 @@
   document.addEventListener("hh:lang", () => {
     updateChrome();
     if (!document.getElementById("view-auth").hidden) loadAuth();
+    if (!document.getElementById("view-history").hidden) loadHistory();
+    if (!document.getElementById("view-orders").hidden) loadOrders();
+    modal.querySelectorAll("[data-captcha]").forEach((b) => { if (captchaCfg.type !== "turnstile") { b.innerHTML = ""; } });
+    if (!modal.hidden) { const f = modal.querySelector(".mpane:not([hidden]) form"); if (f) renderCaptcha(f); }
   });
   document.getElementById("quick-search")?.addEventListener("submit", (e) => {
     e.preventDefault();
@@ -111,24 +118,23 @@
   }
 
   function updateChrome() {
-    const pill = document.getElementById("balance-pill");
-    const bal = document.getElementById("balance-value");
-    const navLabel = document.getElementById("nav-auth-label");
-    const adminEntry = document.getElementById("admin-entry");
-    document.body.classList.toggle("logged-in", !!currentUser);
-    if (currentUser) {
-      pill.hidden = false;
-      bal.textContent = bahtShort(currentUser.balance);
-      navLabel.textContent = currentUser.username;
-      if (adminEntry) {
-        const show = !!currentUser.isAdmin;
-        adminEntry.hidden = !show;
-        adminEntry.style.display = show ? "block" : "none";
-      }
+    const u = currentUser;
+    document.body.classList.toggle("logged-in", !!u);
+    document.getElementById("avatar-btn").hidden = !u;
+    document.getElementById("nav-login").hidden = !!u;
+    document.getElementById("nav-wallet").hidden = !u;
+    const banner = document.getElementById("verify-banner");
+    if (u) {
+      document.getElementById("avatar-top").innerHTML = avatarHtml(u);
+      document.getElementById("nav-balance").textContent = bahtShort(u.balance);
+      document.getElementById("nav-points").textContent = formatInt(u.points || 0) + " " + T("points_unit");
+      document.getElementById("balance-value").textContent = bahtShort(u.balance);
+      if (banner) banner.hidden = !!u.emailVerified || !authCfg.verificationRequired || !!u.isAdmin;
+      if (!menu.hidden) fillMenu();
     } else {
-      pill.hidden = true;
-      navLabel.textContent = T("login");
-      if (adminEntry) { adminEntry.hidden = true; adminEntry.style.display = "none"; }
+      document.getElementById("nav-auth-label").textContent = T("login");
+      if (banner) banner.hidden = true;
+      closeMenu();
     }
   }
 
@@ -146,6 +152,8 @@
     const hashQuery = new URLSearchParams(rawQuery || "");
     const sub = parts[1] || null;
 
+    if (handleAuthHash(page, hashQuery)) { if (!document.querySelector(".page-view:not([hidden])")) { document.getElementById("view-home").hidden = false; loadHome(); } return; }
+    closeMenu();
     document.querySelectorAll(".page-view").forEach((v) => { v.hidden = true; });
     const map = {
       home: "view-home",
@@ -155,8 +163,8 @@
       auction: "view-auction",
       minigame: "view-minigame",
       auth: "view-auth",
-      forgot: "view-forgot",
-      reset: "view-reset",
+      history: "view-history",
+      orders: "view-orders",
       admin: "view-admin",
     };
     const id = map[page] || "view-home";
@@ -170,7 +178,7 @@
     document.querySelectorAll(".nav-item").forEach((a) => {
       const tab = a.getAttribute("data-tab");
       const active = (page === "home" && tab === "home") || tab === page ||
-        (tab === "auth" && (page === "forgot" || page === "reset"));
+        (tab === "auth" && (page === "history" || page === "orders"));
       a.classList.toggle("active", active);
     });
 
@@ -189,9 +197,9 @@
     else if (page === "minigame") {
       if (sub) openMinigamePlay(sub);
       else showMinigameList();
-    } else if (page === "auth") { loadAuth(); handleAuthQuery(hashQuery); }
-    else if (page === "forgot") loadForgot();
-    else if (page === "reset") loadReset(hashQuery);
+    } else if (page === "auth") loadAuth();
+    else if (page === "history") loadHistory();
+    else if (page === "orders") loadOrders();
     else if (page === "admin") loadAdmin();
   }
 
@@ -231,12 +239,12 @@
         <span class="thumb-code">${code}</span>
         ${p.installment ? '<span class="inst-badge">ผ่อนได้</span>' : ""}
         ${p.example ? '<span class="demo-tag">ตัวอย่าง</span>' : ""}</div>`;
-    return `<article class="cat-card" data-pid="${p.id}">
+    return `<article class="cat-card" data-pid="${p.id}" data-price="${Number(p.price)}">
       ${thumb}
       <div class="cat-body">
         <h3>${escapeHtml(p.title)}</h3>
         <p class="cat-price">${Number(p.price).toFixed(2)} บาท</p>
-        ${buy ? `<button type="button" class="btn-buy-full" data-buy="${p.id}">ซื้อสินค้านี้</button>` : ""}
+        ${buy ? (p.stock > 0 ? `<button type="button" class="btn-buy-full" data-buy="${p.id}">ซื้อสินค้านี้</button>` : `<button type="button" class="btn-buy-full" disabled>สินค้าหมด</button>`) : ""}
         <p class="stock">${ICO.package} คงเหลือ ${p.stock}</p>
       </div>
     </article>`;
@@ -244,6 +252,14 @@
 
   function escapeHtml(s) {
     return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  }
+
+  // SQLite CURRENT_TIMESTAMP is UTC ("YYYY-MM-DD HH:MM:SS") → show in the viewer's local time
+  function fmtTs(v) {
+    if (!v) return "";
+    const d = new Date(String(v).replace(" ", "T") + (/[zZ]|[+-]\d\d:?\d\d$/.test(v) ? "" : "Z"));
+    if (isNaN(d)) return String(v);
+    return d.toLocaleString((window.HHi18n && window.HHi18n.lang === "en") ? "en-GB" : "th-TH", { dateStyle: "medium", timeStyle: "short" });
   }
 
   function formatInt(n) {
@@ -346,7 +362,7 @@
     box.hidden = false;
     box.innerHTML = "<h4 style='margin:8px 0'>ประวัติเติมเครดิต</h4>" + rows.map((t) => `
       <div class="tx-item ${t.status === "success" ? "" : "fail"}">
-        <div><div>${escapeHtml(t.message || t.status)}</div><small class="muted">${t.created_at || ""}</small></div>
+        <div><div>${escapeHtml(t.message || t.status)}</div><small class="muted">${escapeHtml(fmtTs(t.created_at))}</small></div>
         <div class="amt">${t.status === "success" ? "+" + bahtShort(t.amount) : "ล้มเหลว"}</div>
       </div>`).join("");
   }
@@ -414,39 +430,6 @@
     }
   }
 
-  async function loadAuth() {
-    const guest = document.getElementById("auth-guest");
-    const profile = document.getElementById("auth-profile");
-    const title = document.getElementById("auth-page-title");
-    if (!currentUser) {
-      guest.hidden = false;
-      profile.hidden = true;
-      title.innerHTML = escapeHtml(T("login")) + ' <span>LOGIN</span>';
-      return;
-    }
-    guest.hidden = true;
-    profile.hidden = false;
-    title.innerHTML = escapeHtml(T("account")) + ' <span>PROFILE</span>';
-    document.getElementById("profile-username").textContent = currentUser.username;
-    document.getElementById("profile-email").textContent =
-      (currentUser.email || "") + (currentUser.discord ? (currentUser.email ? " · " : "") + "Discord ✓" : "");
-    document.getElementById("profile-balance").textContent = bahtShort(currentUser.balance);
-
-    const [{ data: od }, { data: tx }] = await Promise.all([
-      api("/api/orders"),
-      api("/api/transactions"),
-    ]);
-    const ph = document.getElementById("purchase-history");
-    ph.innerHTML = (od.orders || []).length
-      ? od.orders.map((o) => `<div class="tx-item"><div><div>${escapeHtml(o.product_title)}</div><small class="muted">${o.created_at}</small></div><div class="amt">-${bahtShort(o.price)}</div></div>`).join("")
-      : "<p class='muted'>ยังไม่มีประวัติการซื้อ</p>";
-    const th = document.getElementById("profile-topup-history");
-    const tops = (tx.transactions || []).filter((t) => t.type === "topup");
-    th.innerHTML = tops.length
-      ? tops.map((t) => `<div class="tx-item ${t.status === "success" ? "" : "fail"}"><div><div>${escapeHtml(t.message || "")}</div><small class="muted">${t.created_at}</small></div><div class="amt">${t.status === "success" ? "+" + bahtShort(t.amount) : "ล้มเหลว"}</div></div>`).join("")
-      : "<p class='muted'>ยังไม่มีประวัติเติมเครดิต</p>";
-  }
-
   // Events
   document.addEventListener("click", async (e) => {
     const cat = e.target.closest("[data-cat]");
@@ -461,14 +444,37 @@
     const buyBtn = e.target.closest("[data-buy]");
     if (buyBtn) {
       const id = buyBtn.getAttribute("data-buy");
-      if (!currentUser) { toast("กรุณาเข้าสู่ระบบก่อนซื้อ", true); location.hash = "#/auth"; return; }
+      if (!currentUser) { toast(T("need_login_buy"), true); openAuth("login"); return; }
+      // two-tap confirm; price shown on the card is sent so the server can refuse if it changed
+      if (buyBtn.dataset.armed !== "1") {
+        buyBtn.dataset.armed = "1"; buyBtn.dataset.old = buyBtn.textContent;
+        buyBtn.textContent = T("buy_confirm"); buyBtn.classList.add("armed");
+        setTimeout(() => { if (buyBtn.dataset.armed === "1") { delete buyBtn.dataset.armed; buyBtn.textContent = buyBtn.dataset.old; buyBtn.classList.remove("armed"); } }, 4000);
+        return;
+      }
+      delete buyBtn.dataset.armed; buyBtn.classList.remove("armed"); buyBtn.textContent = buyBtn.dataset.old;
+      const card = buyBtn.closest("[data-price]");
       buyBtn.disabled = true;
-      const { res, data } = await api("/api/products/" + id + "/buy", { method: "POST", body: "{}" });
+      const key = (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2)).replace(/[^A-Za-z0-9_-]/g, "");
+      let out;
+      try {
+        out = await api("/api/products/" + id + "/buy", {
+          method: "POST", headers: { "Idempotency-Key": key },
+          body: JSON.stringify({ quantity: 1, expected_price: card ? Number(card.getAttribute("data-price")) : undefined }),
+        });
+      } catch (_) { buyBtn.disabled = false; toast(T("net_fail"), true); return; }
       buyBtn.disabled = false;
-      if (!res.ok || !data.ok) { toast(data.message || "ซื้อไม่สำเร็จ", true); return; }
+      const { res, data } = out;
+      if (!res.ok || !data.ok) {
+        toast(data.message || "ซื้อไม่สำเร็จ", true);
+        if (data.error === "EMAIL_UNVERIFIED") location.hash = "#/auth";
+        if (data.error === "PRICE_CHANGED") { if (!document.getElementById("view-products").hidden) loadProducts(); else loadHome(); }
+        return;
+      }
       currentUser = data.user;
       updateChrome();
-      toast(data.message || "ซื้อสำเร็จ");
+      toast(T("buy_ok"));
+      if (data.order) showSecret(data.order);
       if (!document.getElementById("view-products").hidden) loadProducts();
       if (!document.getElementById("view-home").hidden) loadHome();
       return;
@@ -486,13 +492,6 @@
       return;
     }
 
-    const tab = e.target.closest("[data-auth-tab]");
-    if (tab) {
-      const name = tab.getAttribute("data-auth-tab");
-      document.querySelectorAll(".auth-tab").forEach((t) => t.classList.toggle("active", t === tab));
-      document.getElementById("auth-login").hidden = name !== "login";
-      document.getElementById("auth-signup").hidden = name !== "signup";
-    }
   });
 
   document.getElementById("prod-search").addEventListener("click", () => {
@@ -514,7 +513,7 @@
         method: "POST",
         body: JSON.stringify({ link: document.getElementById("topup-link").value.trim() }),
       });
-      if (!res.ok || !data.ok) { err.textContent = data.message || "เติมไม่สำเร็จ"; err.hidden = false; }
+      if (!res.ok || !data.ok) { err.textContent = data.message || "เติมไม่สำเร็จ"; err.hidden = false; if (data.error === "EMAIL_UNVERIFIED") updateChrome(); }
       else {
         ok.textContent = data.message; ok.hidden = false;
         currentUser = data.user; updateChrome();
@@ -529,7 +528,7 @@
     const form = e.target.closest(".bid-form");
     if (!form) return;
     e.preventDefault();
-    if (!currentUser) { toast("กรุณาเข้าสู่ระบบก่อนประมูล", true); location.hash = "#/auth"; return; }
+    if (!currentUser) { toast("กรุณาเข้าสู่ระบบก่อนประมูล", true); openAuth("login"); return; }
     const amount = Number(new FormData(form).get("amount"));
     const { res, data } = await api("/api/auctions/" + form.getAttribute("data-aid") + "/bid", {
       method: "POST",
@@ -544,7 +543,7 @@
 
   document.getElementById("mg-back").addEventListener("click", () => { location.hash = "#/minigame"; });
   document.getElementById("mg-play-btn").addEventListener("click", async () => {
-    if (!currentUser) { toast("กรุณาเข้าสู่ระบบก่อนเล่น", true); location.hash = "#/auth"; return; }
+    if (!currentUser) { toast("กรุณาเข้าสู่ระบบก่อนเล่น", true); openAuth("login"); return; }
     if (!currentMinigame) return;
     const err = document.getElementById("mg-error");
     const result = document.getElementById("mg-result");
@@ -568,113 +567,361 @@
     }, 900);
   });
 
+  /* —— Auth modal / captcha / profile menu (v3) —— */
+  let authCfg = { discord: false, google: false, emailReset: false, verificationRequired: false };
+  let captchaCfg = { type: "builtin" };
+  let tsLoading = null;
+
+  function avatarHtml(u) {
+    const ch = (u && u.username ? u.username[0] : "?").toUpperCase();
+    return escapeHtml(ch);
+  }
+
+  function loadTurnstile() {
+    if (window.turnstile) return Promise.resolve();
+    if (tsLoading) return tsLoading;
+    tsLoading = new Promise((ok, bad) => {
+      const s = document.createElement("script");
+      s.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
+      s.async = true; s.onload = () => ok(); s.onerror = () => { tsLoading = null; bad(new Error("turnstile")); };
+      document.head.appendChild(s);
+    });
+    return tsLoading;
+  }
+
+  // Render (or refresh) the captcha inside a form. Built-in = server SVG bound to this session, single use.
+  async function renderCaptcha(form) {
+    const box = form && form.querySelector("[data-captcha]");
+    if (!box) return;
+    if (captchaCfg.type === "turnstile" && captchaCfg.siteKey) {
+      try {
+        await loadTurnstile();
+        if (box.dataset.wid) { window.turnstile.reset(box.dataset.wid); return; }
+        box.innerHTML = '<div class="ts-slot"></div>';
+        box.dataset.wid = window.turnstile.render(box.firstChild, {
+          sitekey: captchaCfg.siteKey, theme: "dark",
+          language: (window.HHi18n && window.HHi18n.lang === "en") ? "en" : "th",
+          callback: (t) => { box.dataset.token = t; },
+          "expired-callback": () => { box.dataset.token = ""; },
+        });
+      } catch (_) { box.innerHTML = `<p class="form-error">${escapeHtml(T("captcha_load_fail"))}</p>`; }
+      return;
+    }
+    if (!box.firstChild) {
+      box.innerHTML = `<span class="cap-label">${escapeHtml(T("captcha"))}</span>
+        <div class="cap-row"><img class="cap-img" alt="captcha" width="150" height="50" />
+        <button type="button" class="cap-refresh" aria-label="refresh"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-2.64-6.36L21 8"/><path d="M21 3v5h-5"/></svg></button>
+        <input class="cap-input" name="captcha" maxlength="8" autocomplete="off" autocapitalize="characters" spellcheck="false" required placeholder="${escapeHtml(T("captcha_ph"))}" /></div>`;
+      box.querySelector(".cap-refresh").addEventListener("click", () => renderCaptcha(form));
+    }
+    await ensureCsrf(); // session must exist before the challenge is bound to it
+    box.querySelector(".cap-img").src = "/api/captcha.svg?t=" + Date.now() + Math.random().toString(36).slice(2, 6);
+    box.querySelector(".cap-input").value = "";
+  }
+  function captchaValue(form) {
+    const box = form.querySelector("[data-captcha]");
+    if (!box) return "";
+    if (captchaCfg.type === "turnstile") return box.dataset.token || "";
+    return (box.querySelector(".cap-input")?.value || "").trim();
+  }
+
+  const modal = document.getElementById("auth-modal");
+  let lastFocus = null;
+  function showPane(name) {
+    modal.querySelectorAll(".mpane").forEach((p) => { p.hidden = p.getAttribute("data-pane") !== name; });
+    const tabs = modal.querySelector(".modal-tabs");
+    tabs.hidden = !(name === "login" || name === "signup");
+    modal.querySelectorAll(".modal-tab").forEach((t) => t.classList.toggle("active", t.getAttribute("data-mtab") === name));
+    const pane = modal.querySelector(`.mpane[data-pane="${name}"]`);
+    pane.querySelectorAll(".form-error,.ok").forEach((el) => { el.hidden = true; });
+    if (name === "forgot") {
+      const off = !authCfg.emailReset;
+      document.getElementById("forgot-off").hidden = !off;
+      document.getElementById("forgot-form").hidden = off;
+    }
+    const form = pane.querySelector("form");
+    if (form && !form.hidden) renderCaptcha(form);
+    const first = pane.querySelector("input:not([type=checkbox])");
+    if (first && window.matchMedia("(pointer:fine)").matches) setTimeout(() => first.focus(), 30);
+  }
+  function openAuth(pane) {
+    closeMenu();
+    lastFocus = document.activeElement;
+    modal.hidden = false;
+    document.body.classList.add("modal-open");
+    showPane(pane || "login");
+  }
+  function closeModal(m) {
+    (m || modal).hidden = true;
+    if (document.querySelectorAll(".hh-modal:not([hidden])").length === 0) document.body.classList.remove("modal-open");
+    if (lastFocus && lastFocus.focus) try { lastFocus.focus(); } catch (_) {}
+  }
+  function showMessage(ok, text) {
+    showPane("message");
+    document.getElementById("msg-icon").className = "msg-icon " + (ok ? "good" : "bad");
+    document.getElementById("msg-icon").textContent = ok ? "✓" : "!";
+    document.getElementById("msg-text").textContent = text;
+  }
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      document.querySelectorAll(".hh-modal:not([hidden])").forEach((m) => closeModal(m));
+      closeMenu();
+    }
+  });
+  document.querySelectorAll(".hh-modal").forEach((m) => {
+    m.addEventListener("click", (e) => {
+      if (e.target === m || e.target.closest("[data-close-modal]")) closeModal(m);
+    });
+  });
+  modal.addEventListener("click", (e) => {
+    const t = e.target.closest("[data-mtab]");
+    if (t) { showPane(t.getAttribute("data-mtab")); return; }
+    const g = e.target.closest("[data-goto-pane]");
+    if (g) showPane(g.getAttribute("data-goto-pane"));
+  });
+  document.addEventListener("click", (e) => {
+    const o = e.target.closest("[data-open-auth]");
+    if (o) { e.preventDefault(); openAuth(o.getAttribute("data-open-auth")); }
+  });
+
+  // Profile dropdown
+  const menu = document.getElementById("profile-menu");
+  function openMenu(anchor) {
+    if (!currentUser) { openAuth("login"); return; }
+    fillMenu();
+    menu.hidden = false;
+    menu.classList.toggle("from-bottom", anchor && anchor.id === "nav-wallet");
+    refreshMe().then(fillMenu);
+  }
+  function closeMenu() { if (menu) menu.hidden = true; }
+  function fillMenu() {
+    if (!currentUser) return;
+    document.getElementById("avatar-menu").innerHTML = avatarHtml(currentUser);
+    document.getElementById("pm-username").textContent = currentUser.username;
+    document.getElementById("pm-email").textContent = currentUser.email || (currentUser.discord ? "Discord" : currentUser.google ? "Google" : "");
+    document.getElementById("pm-balance").textContent = baht(currentUser.balance);
+    document.getElementById("pm-points").textContent = formatInt(currentUser.points || 0) + " " + T("points_unit");
+    document.getElementById("pm-admin").hidden = !currentUser.isAdmin;
+  }
+  ["avatar-btn", "nav-wallet"].forEach((id) => {
+    document.getElementById(id).addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (!menu.hidden) closeMenu(); else openMenu(e.currentTarget);
+    });
+  });
+  document.addEventListener("click", (e) => {
+    if (!menu.hidden && !e.target.closest("#profile-menu")) closeMenu();
+    else if (e.target.closest("#profile-menu a")) closeMenu();
+  });
+
+  async function submitAuth(form, errId, path, body) {
+    const err = document.getElementById(errId);
+    err.hidden = true;
+    const btn = form.querySelector("button[type=submit]");
+    btn.disabled = true;
+    try {
+      const { res, data } = await api(path, { method: "POST", body: JSON.stringify(body) });
+      if (!res.ok || !data.ok) {
+        err.textContent = data.message || T("failed"); err.hidden = false;
+        if (data.error === "RESET_UNAVAILABLE") { authCfg.emailReset = false; showPane("forgot"); }
+        else renderCaptcha(form); // every challenge is single use
+        return null;
+      }
+      return data;
+    } catch (_) { err.textContent = T("net_fail"); err.hidden = false; renderCaptcha(form); return null; }
+    finally { btn.disabled = false; }
+  }
+
   document.getElementById("login-form").addEventListener("submit", async (e) => {
     e.preventDefault();
-    const err = document.getElementById("login-error");
-    err.hidden = true;
-    const fd = new FormData(e.target);
-    const { res, data } = await api("/api/login", {
-      method: "POST",
-      body: JSON.stringify({ identifier: fd.get("identifier"), password: fd.get("password") }),
+    const f = e.target, fd = new FormData(f);
+    if (!String(fd.get("identifier") || "").trim() || !fd.get("password")) {
+      const err = document.getElementById("login-error"); err.textContent = T("fill_all"); err.hidden = false; return;
+    }
+    const data = await submitAuth(f, "login-error", "/api/login", {
+      identifier: String(fd.get("identifier")).trim(), password: fd.get("password"), captcha: captchaValue(f),
     });
-    if (!res.ok || !data.ok) { err.textContent = data.message || "เข้าสู่ระบบไม่สำเร็จ"; err.hidden = false; return; }
-    currentUser = data.user; updateChrome(); toast("เข้าสู่ระบบสำเร็จ"); loadAuth();
+    if (!data) return;
+    currentUser = data.user; f.reset(); closeModal(); updateChrome(); toast(T("login_ok"));
+    route();
   });
 
   document.getElementById("signup-form").addEventListener("submit", async (e) => {
     e.preventDefault();
+    const f = e.target, fd = new FormData(f);
     const err = document.getElementById("signup-error");
-    err.hidden = true;
-    const fd = new FormData(e.target);
-    if (fd.get("password") !== fd.get("password2")) { err.textContent = T("pw_mismatch"); err.hidden = false; return; }
-    const { res, data } = await api("/api/signup", {
-      method: "POST",
-      body: JSON.stringify({ username: fd.get("username"), email: fd.get("email"), password: fd.get("password") }),
+    if (!f.terms.checked) { err.textContent = T("must_accept"); err.hidden = false; return; }
+    if (!f.checkValidity()) { err.textContent = T("check_fields"); err.hidden = false; f.reportValidity(); return; }
+    const data = await submitAuth(f, "signup-error", "/api/signup", {
+      username: String(fd.get("username")).trim(), email: String(fd.get("email")).trim(),
+      password: fd.get("password"), terms: true, captcha: captchaValue(f),
     });
-    if (!res.ok || !data.ok) { err.textContent = data.message || "สมัครไม่สำเร็จ"; err.hidden = false; return; }
-    currentUser = data.user; updateChrome(); toast("สมัครสมาชิกสำเร็จ"); loadAuth();
+    if (!data) return;
+    currentUser = data.user; f.reset(); updateChrome();
+    if (data.needsVerify) showMessage(true, data.mailSent ? T("signup_verify_sent") : T("signup_verify_fail"));
+    else { closeModal(); toast(T("signup_ok")); route(); }
   });
 
-  document.getElementById("logout-btn").addEventListener("click", async () => {
-    await api("/api/logout", { method: "POST", body: "{}" });
-    currentUser = null; updateChrome(); toast("ออกจากระบบแล้ว"); loadAuth();
-  });
-
-
-  let authCfg = { discord: false, emailReset: false };
-  function applyAuthCfg() {
-    document.querySelectorAll("[data-oauth]").forEach((el) => { el.hidden = !authCfg.discord; });
-  }
-
-  const AUTH_CODES = {
-    discord_off: "e_discord_off", discord_cancel: "e_discord_cancel", discord_state: "e_discord_state",
-    discord_fail: "e_discord_fail", discord_admin: "e_discord_admin",
-  };
-  function handleAuthQuery(q) {
-    const e = q.get("e"); const ok = q.get("ok");
-    if (e && AUTH_CODES[e]) {
-      document.querySelector('[data-auth-tab="login"]')?.click();
-      const err = document.getElementById("login-error");
-      err.textContent = T(AUTH_CODES[e]); err.hidden = false;
-      toast(T(AUTH_CODES[e]), true);
-    }
-    if (ok === "discord") {
-      refreshMe().then(() => { toast(T("discord_ok")); loadAuth(); });
-    }
-    if (e || ok) history.replaceState(null, "", "#/auth");
-  }
-
-  function loadForgot() {
-    const off = !authCfg.emailReset;
-    document.getElementById("forgot-off").hidden = !off;
-    document.getElementById("forgot-form").hidden = off;
-    document.getElementById("forgot-ok").hidden = true;
-    document.getElementById("forgot-error").hidden = true;
-  }
   document.getElementById("forgot-form").addEventListener("submit", async (e) => {
     e.preventDefault();
-    const err = document.getElementById("forgot-error"); const ok = document.getElementById("forgot-ok");
-    err.hidden = true; ok.hidden = true;
-    const btn = e.target.querySelector("button[type=submit]"); btn.disabled = true;
-    const { res, data } = await api("/api/password/forgot", {
-      method: "POST", body: JSON.stringify({ email: new FormData(e.target).get("email") }),
+    const f = e.target;
+    const data = await submitAuth(f, "forgot-error", "/api/password/forgot", {
+      email: String(new FormData(f).get("email") || "").trim(), captcha: captchaValue(f),
     });
-    btn.disabled = false;
-    if (data.error === "RESET_UNAVAILABLE") { authCfg.emailReset = false; loadForgot(); return; }
-    if (!res.ok || !data.ok) { err.textContent = data.message || T("failed"); err.hidden = false; return; }
-    ok.textContent = T("forgot_sent"); ok.hidden = false;
+    if (!data) return;
+    const ok = document.getElementById("forgot-ok"); ok.textContent = data.message || T("forgot_sent"); ok.hidden = false;
+    renderCaptcha(f);
   });
 
   let resetToken = "";
-  function loadReset(q) {
-    const tok = q.get("token") || "";
-    if (tok) { resetToken = tok; history.replaceState(null, "", "#/reset"); }
-    const err = document.getElementById("reset-error");
-    document.getElementById("reset-ok").hidden = true;
-    err.hidden = !!resetToken;
-    if (!resetToken) err.textContent = T("reset_bad");
-    document.getElementById("reset-form").hidden = false;
-  }
   document.getElementById("reset-form").addEventListener("submit", async (e) => {
     e.preventDefault();
-    const err = document.getElementById("reset-error"); const ok = document.getElementById("reset-ok");
-    err.hidden = true;
-    const fd = new FormData(e.target);
+    const f = e.target, fd = new FormData(f);
+    const err = document.getElementById("reset-error");
     if (fd.get("password") !== fd.get("password2")) { err.textContent = T("pw_mismatch"); err.hidden = false; return; }
     if (!resetToken) { err.textContent = T("reset_bad"); err.hidden = false; return; }
-    const { res, data } = await api("/api/password/reset", {
-      method: "POST", body: JSON.stringify({ token: resetToken, password: fd.get("password") }),
-    });
-    if (!res.ok || !data.ok) { err.textContent = data.message || T("reset_bad"); err.hidden = false; return; }
-    resetToken = ""; e.target.reset(); e.target.hidden = true;
-    ok.textContent = T("reset_done"); ok.hidden = false;
-    setTimeout(() => { location.hash = "#/auth"; }, 1800);
+    const data = await submitAuth(f, "reset-error", "/api/password/reset", { token: resetToken, password: fd.get("password") });
+    if (!data) return;
+    resetToken = ""; f.reset();
+    currentUser = null; updateChrome();
+    showMessage(true, data.message || T("reset_done"));
+  });
+
+  document.querySelectorAll("[data-logout]").forEach((b) => b.addEventListener("click", async () => {
+    closeMenu();
+    await api("/api/logout", { method: "POST", body: "{}" });
+    csrfToken = "";
+    currentUser = null; updateChrome(); toast(T("logged_out"));
+    if (["#/auth", "#/history", "#/orders", "#/admin"].includes(location.hash)) location.hash = "#/"; else route();
+  }));
+  modal.addEventListener("input", (e) => {
+    const f = e.target.closest("form"); if (!f) return;
+    f.querySelectorAll(".form-error").forEach((el) => { el.hidden = true; });
+  });
+
+  document.getElementById("resend-verify").addEventListener("click", async (e) => {
+    e.target.disabled = true;
+    const { data } = await api("/api/email/resend", { method: "POST", body: "{}" });
+    e.target.disabled = false;
+    toast(data.message || T("failed"), !data.ok);
+  });
+
+  document.getElementById("change-pw-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const f = e.target, fd = new FormData(f);
+    const err = document.getElementById("change-pw-error"); err.hidden = true;
+    const { res, data } = await api("/api/account/password", { method: "POST", body: JSON.stringify({ current: fd.get("current"), password: fd.get("password") }) });
+    if (!res.ok || !data.ok) { err.textContent = data.message || T("failed"); err.hidden = false; return; }
+    f.reset(); toast(data.message);
+  });
+
+  function applyAuthCfg() {
+    const any = !!(authCfg.discord || authCfg.google);
+    document.querySelectorAll("[data-oauth]").forEach((el) => { el.hidden = !any; });
+    document.querySelectorAll("[data-oauth-google]").forEach((el) => { el.hidden = !authCfg.google; });
+    document.querySelectorAll("[data-oauth-discord]").forEach((el) => { el.hidden = !authCfg.discord; });
+  }
+
+  const AUTH_CODES = {
+    discord_off: "e_discord_off", google_off: "e_google_off", oauth_cancel: "e_oauth_cancel",
+    oauth_state: "e_oauth_state", oauth_fail: "e_oauth_fail", oauth_admin: "e_oauth_admin",
+  };
+  // Returns true when the hash was an auth action (handled in the modal).
+  function handleAuthHash(page, q) {
+    if (page === "auth" && (q.get("e") || q.get("ok"))) {
+      const e = q.get("e"), ok = q.get("ok");
+      history.replaceState(null, "", ok ? "#/" : "#/");
+      if (e) { openAuth("login"); const err = document.getElementById("login-error"); err.textContent = T(AUTH_CODES[e] || "e_oauth_fail"); err.hidden = false; }
+      if (ok) refreshMe().then(() => { toast(T("oauth_ok")); route(); });
+      return true;
+    }
+    if (page === "reset" || page === "forgot") {
+      if (page === "reset") {
+        const tok = q.get("token") || "";
+        if (tok) resetToken = tok;
+        history.replaceState(null, "", "#/");
+        openAuth(resetToken ? "reset" : "forgot");
+      } else { history.replaceState(null, "", "#/"); openAuth("forgot"); }
+      return true;
+    }
+    if (page === "verify") {
+      const tok = q.get("token") || "";
+      history.replaceState(null, "", "#/");
+      openAuth("login");
+      api("/api/email/verify", { method: "POST", body: JSON.stringify({ token: tok }) }).then(({ data }) => {
+        showMessage(!!data.ok, data.message || T("failed"));
+        if (data.ok) refreshMe();
+        if (data.ok && currentUser) modal.querySelector('.mpane[data-pane="message"] .btn-primary').hidden = true;
+      });
+      return true;
+    }
+    return false;
+  }
+
+  async function loadAuth() {
+    const profile = document.getElementById("auth-profile");
+    const note = document.getElementById("auth-guest-note");
+    if (!currentUser) { profile.hidden = true; note.hidden = false; openAuth("login"); return; }
+    note.hidden = true; profile.hidden = false;
+    await refreshMe();
+    if (!currentUser) return loadAuth();
+    document.getElementById("avatar-profile").innerHTML = avatarHtml(currentUser);
+    document.getElementById("profile-username").textContent = currentUser.username;
+    const tags = [currentUser.email || ""];
+    if (currentUser.email) tags.push(currentUser.emailVerified ? T("verified") : T("unverified"));
+    if (currentUser.discord) tags.push("Discord ✓");
+    if (currentUser.google) tags.push("Google ✓");
+    document.getElementById("profile-email").textContent = tags.filter(Boolean).join(" · ");
+    document.getElementById("profile-balance").textContent = baht(currentUser.balance);
+    document.getElementById("profile-points").textContent = formatInt(currentUser.points || 0);
+    const ae = document.getElementById("admin-entry");
+    if (ae) { ae.hidden = !currentUser.isAdmin; ae.style.display = currentUser.isAdmin ? "block" : "none"; }
+  }
+
+  const REASON = { topup: "r_topup", purchase: "r_purchase", minigame: "r_minigame", minigame_prize: "r_minigame_prize",
+    admin_adjust: "r_admin", admin_bootstrap: "r_admin", opening_balance: "r_opening", refund: "r_refund" };
+  async function loadHistory() {
+    const box = document.getElementById("history-list");
+    if (!currentUser) { box.innerHTML = ""; openAuth("login"); return; }
+    const { data } = await api("/api/ledger");
+    const rows = data.ledger || [];
+    box.innerHTML = rows.length ? rows.map((r) => `<div class="tx-item ${r.delta < 0 ? "neg" : ""}">
+        <div><div>${escapeHtml(T(REASON[r.reason] || "r_other"))}</div><small class="muted">${escapeHtml(fmtTs(r.created_at))}</small></div>
+        <div class="amt">${r.delta >= 0 ? "+" : "−"}${escapeHtml(baht(Math.abs(r.delta)))}<small class="muted">${escapeHtml(T("bal_after"))} ${escapeHtml(baht(r.balance_after))}</small></div>
+      </div>`).join("") : `<p class="muted">${escapeHtml(T("no_history"))}</p>`;
+  }
+  async function loadOrders() {
+    const box = document.getElementById("orders-list");
+    if (!currentUser) { box.innerHTML = ""; openAuth("login"); return; }
+    const { data } = await api("/api/orders");
+    const rows = data.orders || [];
+    box.innerHTML = rows.length ? rows.map((o) => `<div class="tx-item">
+        <div><div>${escapeHtml(o.product_title)}</div><small class="muted">#${o.id} · ${escapeHtml(fmtTs(o.created_at))}</small></div>
+        <div class="amt">−${escapeHtml(baht(o.price))}${o.has_delivery ? `<button type="button" class="inline-btn" data-reveal="${o.id}">${escapeHtml(T("view_account"))}</button>` : ""}</div>
+      </div>`).join("") : `<p class="muted">${escapeHtml(T("no_orders"))}</p>`;
+  }
+  function showSecret(order) {
+    document.getElementById("secret-title").textContent = order.product_title + " #" + order.id;
+    document.getElementById("secret-body").textContent = order.delivered || T("contact_admin_delivery");
+    const m = document.getElementById("secret-modal");
+    m.hidden = false; document.body.classList.add("modal-open");
+  }
+  document.getElementById("secret-copy").addEventListener("click", async () => {
+    try { await navigator.clipboard.writeText(document.getElementById("secret-body").textContent); toast(T("copied")); }
+    catch (_) { const r = document.createRange(); r.selectNodeContents(document.getElementById("secret-body")); getSelection().removeAllRanges(); getSelection().addRange(r); }
+  });
+  document.getElementById("orders-list").addEventListener("click", async (e) => {
+    const b = e.target.closest("[data-reveal]");
+    if (!b) return;
+    const { data } = await api("/api/orders/" + b.getAttribute("data-reveal"));
+    if (data.ok) showSecret(data.order); else toast(data.message || T("failed"), true);
   });
 
   async function loadSiteConfig() {
     const { data } = await api("/api/config");
     configCats = data.categories || [];
     if (data.auth) { authCfg = data.auth; applyAuthCfg(); }
+    if (data.captcha) captchaCfg = data.captcha;
     const track = document.getElementById("announce-track");
     if (track && data.announcement) {
       const t = escapeHtml(data.announcement) + " · ";
@@ -730,6 +977,7 @@
     if (name === "settings") renderAdminSettings();
     if (name === "users") renderAdminUsers();
     if (name === "orders") renderAdminOrders();
+    if (name === "ledger") renderAdminLedger();
     if (name === "cover") {
       document.getElementById("admin-cover-preview").src = "/img/cover.jpg?" + Date.now();
     }
@@ -758,8 +1006,14 @@
   document.getElementById("admin-cover-form")?.addEventListener("submit", async (e) => {
     e.preventDefault();
     const fd = new FormData(e.target);
-    const { res, data } = await apiForm("/api/admin/cover", { method: "POST", formData: fd });
+    const hasFile = fd.get("image") && fd.get("image").size;
+    if (!hasFile && !String(fd.get("image_url") || "").trim()) { toast("เลือกรูปหรือวางลิงก์รูปก่อน", true); return; }
+    const btn = e.target.querySelector("button[type=submit]"); btn.disabled = true;
+    let out; try { out = await apiForm("/api/admin/cover", { method: "POST", formData: fd }); } catch (_) { out = { res: { ok: false }, data: { message: "เชื่อมต่อเซิร์ฟเวอร์ไม่สำเร็จ" } }; }
+    btn.disabled = false;
+    const { res, data } = out;
     if (!res.ok || !data.ok) { toast(data.message || "อัปโหลดไม่สำเร็จ", true); return; }
+    e.target.reset(); e.target.querySelector(".img-preview")?.replaceChildren();
     toast(data.message);
     document.getElementById("admin-cover-preview").src = data.cover;
     document.querySelectorAll("img.hero-cover").forEach((img) => { img.src = data.cover; });
@@ -781,8 +1035,15 @@
           <label>หมวด<select name="category">${catOpts}</select></label>
           <label>ราคา<input name="price" type="number" step="0.01" required /></label>
           <label>คงเหลือ<input name="stock" type="number" value="1" required /></label>
-          <label><input name="installment" type="checkbox" value="1" /> สินค้าผ่อนได้</label>
-          <label>รูปสินค้า (ถ้ามี)<input type="file" name="image" accept="image/jpeg,image/png,image/webp" /></label>
+          <label class="check"><input name="installment" type="checkbox" value="1" /> สินค้าผ่อนได้</label>
+          <div class="img-current" id="admin-product-current" hidden></div>
+          <label>รูปสินค้า — jpg / png / webp / gif (รูปจาก iPhone แปลงให้อัตโนมัติ)<input type="file" name="image" accept="image/*" data-image-input /></label>
+          <label>หรือวางลิงก์รูป (https://)<input name="image_url" type="url" placeholder="https://..." /></label>
+          <label class="check" id="admin-product-rm" hidden><input name="remove_image" type="checkbox" value="1" /> ลบรูปเดิม</label>
+          <label>บัญชีที่จะส่งให้ผู้ซื้อ — 1 บรรทัด = 1 บัญชี (ใส่แล้วสต็อกนับตามจำนวนบรรทัด)
+            <textarea name="items" rows="3" class="mono" placeholder="user01 | pass01 | email01&#10;user02 | pass02 | email02" autocomplete="off" spellcheck="false"></textarea></label>
+          <label>ข้อความส่งมอบ (ใช้เมื่อไม่มีรายการบัญชีด้านบน)<textarea name="delivery_note" rows="2" placeholder="เช่น ทักแอดมินพร้อมเลขออเดอร์เพื่อรับไอดี"></textarea></label>
+          <p class="form-error" id="admin-product-error" hidden></p>
           <button class="btn-primary" type="submit">บันทึกสินค้า</button>
           <button class="btn-ghost" type="button" id="admin-product-reset">ล้างฟอร์ม</button>
         </form>
@@ -791,9 +1052,10 @@
         <h4>รายการสินค้า</h4>
         <div class="admin-table">${(data.products||[]).map((p)=>`
           <div class="admin-row">
+            ${p.image ? `<img class="admin-thumb" src="${escapeHtml(p.image)}" alt="" loading="lazy" />` : '<span class="admin-thumb none"></span>'}
             <div>
               <strong>${escapeHtml(p.sku)}</strong> · ${escapeHtml(p.title)}
-              <div class="muted">${Number(p.price).toFixed(2)} บาท · คงเหลือ ${p.stock}${p.image?' · มีรูป':''}</div>
+              <div class="muted">${Number(p.price).toFixed(2)} บาท · คงเหลือ ${p.stock}${p.items_total ? ` · บัญชีพร้อมส่ง ${p.items_free}/${p.items_total}` : ''}</div>
             </div>
             <div class="admin-actions">
               <button type="button" data-edit-product='${escapeHtml(JSON.stringify(p))}'>แก้ไข</button>
@@ -819,6 +1081,13 @@
       f.id.value = p.id; f.sku.value = p.sku; f.title.value = p.title;
       f.description.value = p.description || ""; f.category.value = p.category;
       f.price.value = p.price; f.stock.value = p.stock; f.installment.checked = !!p.installment;
+      f.delivery_note.value = p.delivery_note || ""; f.items.value = ""; f.image_url.value = ""; f.remove_image.checked = false;
+      const cur = document.getElementById("admin-product-current");
+      cur.hidden = !p.image; cur.innerHTML = p.image ? `<img src="${escapeHtml(p.image)}" alt="" /><small class="muted">รูปปัจจุบัน</small>` : "";
+      document.getElementById("admin-product-rm").hidden = !p.image;
+      f.querySelector(".img-preview")?.replaceChildren();
+      document.getElementById("admin-product-error").hidden = true;
+      f.scrollIntoView({ behavior: "smooth", block: "start" });
       toast("โหลดข้อมูลเพื่อแก้ไขแล้ว");
     }
   });
@@ -831,13 +1100,18 @@
     if (!f.installment.checked) fd.delete("installment"); else fd.set("installment", "1");
     const id = fd.get("id");
     fd.delete("id");
+    if (!f.remove_image.checked) fd.delete("remove_image");
     const url = id ? "/api/admin/products/" + id : "/api/admin/products";
     const method = id ? "PUT" : "POST";
-    // fetch FormData — browser sets multipart
-    const { res, data } = await apiForm(url, { method, formData: fd });
-    if (!res.ok || !data.ok) { toast(data.message || "บันทึกไม่สำเร็จ", true); return; }
+    const errBox = document.getElementById("admin-product-error"); errBox.hidden = true;
+    const btn = f.querySelector("button[type=submit]"); btn.disabled = true; btn.textContent = "กำลังบันทึก...";
+    let out;
+    try { out = await apiForm(url, { method, formData: fd }); }
+    catch (_) { out = { res: { ok: false }, data: { message: "เชื่อมต่อเซิร์ฟเวอร์ไม่สำเร็จ" } }; }
+    btn.disabled = false; btn.textContent = "บันทึกสินค้า";
+    const { res, data } = out;
+    if (!res.ok || !data.ok) { errBox.textContent = data.message || "บันทึกไม่สำเร็จ"; errBox.hidden = false; toast(data.message || "บันทึกไม่สำเร็จ", true); return; }
     toast(data.message || "บันทึกแล้ว");
-    f.reset(); f.id.value = "";
     renderAdminProducts();
   });
 
@@ -845,6 +1119,10 @@
     if (e.target.id === "admin-product-reset") {
       const f = document.getElementById("admin-product-form");
       f.reset(); f.id.value = "";
+      document.getElementById("admin-product-current").hidden = true;
+      document.getElementById("admin-product-rm").hidden = true;
+      document.getElementById("admin-product-error").hidden = true;
+      f.querySelector(".img-preview")?.replaceChildren();
     }
   });
 
@@ -858,7 +1136,7 @@
         <label>ชื่อ<input name="title" required /></label>
         <label>คำอธิบาย<input name="subtitle" /></label>
         <label>โทนสี<select name="tone"><option value="blue">blue</option><option value="dark">dark</option><option value="navy">navy</option><option value="purple">purple</option></select></label>
-        <label>แบนเนอร์ (ถ้ามี)<input type="file" name="image" accept="image/jpeg,image/png,image/webp" /></label>
+        <label>แบนเนอร์ (ถ้ามี)<input type="file" name="image" accept="image/*" data-image-input /></label>
         <button class="btn-primary" type="submit">บันทึกหมวด</button>
       </form></div>
       <div class="info-card" style="margin-top:12px">${(data.categories||[]).map(c=>`
@@ -904,7 +1182,7 @@
         <label>คำอธิบาย<input name="subtitle" /></label>
         <label>ราคา / ครั้ง<input name="price" type="number" step="0.01" required /></label>
         <label>รางวัล (บรรทัดละ ชื่อ|น้ำหนัก)<textarea name="prizes" rows="4" placeholder="เกลือ|40\nรางวัลใหญ่|5"></textarea></label>
-        <label>รูป (ถ้ามี)<input type="file" name="image" accept="image/jpeg,image/png,image/webp" /></label>
+        <label>รูป (ถ้ามี)<input type="file" name="image" accept="image/*" data-image-input /></label>
         <button class="btn-primary" type="submit">บันทึกมินิเกม</button>
       </form></div>
       <div class="info-card" style="margin-top:12px">${(data.minigames||[]).map(g=>`
@@ -940,7 +1218,7 @@
         <label>รายละเอียด<textarea name="description" rows="2"></textarea></label>
         <label>ราคาเปิด<input name="start_price" type="number" step="0.01" required /></label>
         <label>หมดเขต (YYYY-MM-DD HH:MM)<input name="ends_at" placeholder="2026-12-31 23:59" /></label>
-        <label>รูป (ถ้ามี)<input type="file" name="image" accept="image/jpeg,image/png,image/webp" /></label>
+        <label>รูป (ถ้ามี)<input type="file" name="image" accept="image/*" data-image-input /></label>
         <button class="btn-primary" type="submit">บันทึกประมูล</button>
       </form></div>
       <div class="info-card" style="margin-top:12px">${(data.auctions||[]).map(a=>`
@@ -971,7 +1249,23 @@
     f.announcement.value = data.settings?.announcement || "";
     f.contact_url.value = data.settings?.contact_url || "";
     f.contact_label.value = data.settings?.contact_label || "";
+    const { data: dg } = await api("/api/admin/diag");
+    const d = dg.diag || {};
+    const yn = (v) => (v ? "✅" : "❌");
+    document.getElementById("admin-diag").textContent = [
+      `อีเมล (SMTP): ${yn(d.smtp)}   ลิงก์เว็บ: ${d.publicBase || "-"}`,
+      `Captcha: ${d.turnstile ? "Cloudflare Turnstile" : "ในตัว (SVG)"}   Google: ${yn(d.google)}   Discord: ${yn(d.discord)}`,
+      `ย่อรูป (sharp): ${yn(d.sharp)}   HTTPS: ${yn(d.secure)}   IP ของคุณ: ${d.clientIp || "-"}`,
+      `บัญชีเงินไม่ตรง: ${d.ledgerMismatches ?? "-"}   Node ${d.node || ""}`,
+    ].join("\n");
   }
+  document.getElementById("admin-mail-test")?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const btn = e.target.querySelector("button"); btn.disabled = true;
+    const { data } = await api("/api/admin/mail-test", { method: "POST", body: JSON.stringify({ to: new FormData(e.target).get("to") }) });
+    btn.disabled = false;
+    toast(data.message || "ไม่สำเร็จ", !data.ok);
+  });
   document.getElementById("admin-settings-form")?.addEventListener("submit", async (e) => {
     e.preventDefault();
     const fd = new FormData(e.target);
@@ -988,14 +1282,17 @@
       ${(data.users||[]).map(u=>`
         <div class="admin-row">
           <div><strong>${escapeHtml(u.username)}</strong> ${u.role==="admin"?'<span class="badge-demo">admin</span>':''}
-            <div class="muted">${u.email?escapeHtml(u.email)+" · ":""}${u.discord?"Discord · ":""}เครดิต ${Number(u.balance).toFixed(2)} · ${u.created_at||""}</div></div>
+            <div class="muted">${u.email?escapeHtml(u.email)+(u.email_verified?" ✓":" (ยังไม่ยืนยัน)")+" · ":""}${u.discord?"Discord · ":""}${u.google?"Google · ":""}เครดิต ${Number(u.balance).toFixed(2)} · แต้ม ${u.points||0} · ${escapeHtml(u.created_at||"")}</div></div>
+          ${u.role!=="admin" && u.email && !u.email_verified ? `<button type="button" class="inline-btn" data-verify-user="${u.id}">ยืนยันอีเมลให้</button>` : ""}
+          <button type="button" class="inline-btn" data-user-ledger="${u.id}">ดูบัญชีเงิน</button>
           <form class="credit-form" data-uid="${u.id}">
             <input name="amount" type="number" step="0.01" placeholder="จำนวน" required style="width:90px" />
-            <select name="mode"><option value="set">ตั้งค่า</option><option value="add">บวก/ลบ</option></select>
+            <select name="mode"><option value="add">บวก/ลบ</option><option value="set">ตั้งค่า</option></select>
+            <input name="note" maxlength="120" placeholder="เหตุผล" style="width:110px" />
             <button type="submit">ปรับ</button>
           </form>
           ${u.role==="admin"?"":`<form class="credit-form pw-form" data-uid="${u.id}">
-            <input name="password" type="text" minlength="6" maxlength="72" placeholder="รหัสผ่านใหม่ (6+)" autocomplete="off" required />
+            <input name="password" type="text" minlength="8" maxlength="72" placeholder="รหัสผ่านใหม่ (8+)" autocomplete="off" required />
             <button type="submit">ตั้งรหัสใหม่</button>
           </form>`}
         </div>`).join("")}</div>`;
@@ -1015,10 +1312,39 @@
     e.preventDefault();
     const fd = new FormData(form);
     const { res, data } = await api("/api/admin/users/"+form.getAttribute("data-uid")+"/credit", {
-      method: "POST", body: JSON.stringify({ amount: Number(fd.get("amount")), mode: fd.get("mode") })
+      method: "POST", body: JSON.stringify({ amount: Number(fd.get("amount")), mode: fd.get("mode"), note: fd.get("note") || "" })
     });
     if (!res.ok||!data.ok){ toast(data.message||"ไม่สำเร็จ", true); return; }
     toast("ปรับเครดิตแล้ว"); renderAdminUsers();
+  });
+
+  document.getElementById("atab-users").addEventListener("click", async (e) => {
+    const v = e.target.closest("[data-verify-user]");
+    if (v) {
+      const { data } = await api("/api/admin/users/" + v.getAttribute("data-verify-user") + "/verify", { method: "POST", body: "{}" });
+      toast(data.message || "ไม่สำเร็จ", !data.ok); renderAdminUsers(); return;
+    }
+    const l = e.target.closest("[data-user-ledger]");
+    if (l) { ledgerUser = l.getAttribute("data-user-ledger"); showAdminTab("ledger"); }
+  });
+
+  let ledgerUser = "";
+  async function renderAdminLedger() {
+    const box = document.getElementById("atab-ledger");
+    const { data } = await api("/api/admin/ledger" + (ledgerUser ? "?user=" + encodeURIComponent(ledgerUser) : ""));
+    const mm = data.mismatches || [];
+    box.innerHTML = `<div class="info-card">
+      <h4>บัญชีเงิน (ledger) ${ledgerUser ? `· สมาชิก #${escapeHtml(ledgerUser)} <button type="button" class="inline-btn" data-ledger-all>ดูทั้งหมด</button>` : "· 200 รายการล่าสุด"}</h4>
+      <p class="${mm.length ? "form-error" : "ok"}">${mm.length ? `⚠ ยอดเงินไม่ตรงกับบัญชี ${mm.length} บัญชี: ` + mm.map((m) => escapeHtml(m.username || ("#" + m.id))).join(", ") : "✓ ยอดเงินทุกบัญชีตรงกับประวัติการเงิน"}</p>
+      <div class="admin-table">${(data.ledger || []).map((r) => `
+        <div class="admin-row ledger-row">
+          <div><strong>${escapeHtml(r.username)}</strong> · ${escapeHtml(r.reason)}${r.ref ? ` · <span class="mono">${escapeHtml(r.ref)}</span>` : ""}${r.admin_name ? ` · โดย ${escapeHtml(r.admin_name)}` : ""}
+            <div class="muted">${escapeHtml(fmtTs(r.created_at))}</div></div>
+          <div class="amt ${r.delta < 0 ? "neg" : "pos"}">${r.delta >= 0 ? "+" : ""}${Number(r.delta).toFixed(2)}<small class="muted">คงเหลือ ${Number(r.balance_after).toFixed(2)}</small></div>
+        </div>`).join("") || "<p class='muted'>ยังไม่มีรายการ</p>"}</div></div>`;
+  }
+  document.getElementById("atab-ledger").addEventListener("click", (e) => {
+    if (e.target.closest("[data-ledger-all]")) { ledgerUser = ""; renderAdminLedger(); }
   });
 
   async function renderAdminOrders() {

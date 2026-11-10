@@ -6,12 +6,13 @@ console.log(`[startup] HAHA SHOP booting: node ${process.version} ${process.plat
   // better-sqlite3 v13 prebuilds require Node >= 22; on Node 20 `new Database()` segfaults (exit 139).
   const major = Number(process.versions.node.split(".")[0]);
   if (major < 22) {
-    console.error(`[startup] FATAL: Node ${process.version} is too old. HAHA SHOP requires Node 22.x (better-sqlite3 crashes on older Node).`);
+    console.error(`[startup] FATAL: Node ${process.version} is too old. HAHA SHOP requires Node 22.x.`);
     process.exit(1);
   }
 }
 const path = require("path");
 const fs = require("fs");
+const crypto = require("crypto");
 
 (function loadEnv() {
   try {
@@ -27,307 +28,183 @@ const fs = require("fs");
 console.log("[startup] env loaded (NODE_ENV=%s, PORT=%s)", process.env.NODE_ENV || "", process.env.PORT || "");
 const express = require("express");
 const session = require("express-session");
-const bcrypt = require("bcryptjs");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
-console.log("[startup] opening database (better-sqlite3)...");
-const { db, getSetting } = require("./lib/db");
+const { db, getSetting, applyBalance } = require("./lib/db");
 console.log("[startup] database opened");
 const { redeemVoucher, extractHash, THAI_ERRORS } = require("./lib/truemoney");
 const { createAdminRouter } = require("./lib/admin-api");
-const { UPLOAD_DIR } = require("./lib/upload");
-const {
-  clientIp,
-  recordFailedLogin,
-  clearFailedLogin,
-  isLoginLocked,
-  originOk,
-  ensureCsrf,
-  csrfOk,
-} = require("./lib/security");
+const { serveImage } = require("./lib/images");
+const { clientIp, originOk, ensureCsrf, csrfOk } = require("./lib/security");
+const { captchaImage, publicConfig: captchaConfig, turnstileOn } = require("./lib/captcha");
+const { smtpConfigured } = require("./lib/mailer");
+const { mountAccount, isVerified, verificationRequired } = require("./lib/account");
 const { ensureAdmin } = require("./scripts/ensure-admin");
-const { mountAuthExtra, normEmail, discordConfigured, smtpConfigured } = require("./lib/auth-extra");
-console.log("[startup] ensuring admin account...");
+const { SqliteStore } = require("./lib/session-store");
 ensureAdmin();
 console.log("[startup] admin ensured");
 
+const PROD = process.env.NODE_ENV === "production";
 const PORT = Number(process.env.PORT || 8080);
-const SESSION_SECRET = process.env.SESSION_SECRET || "haha-shop-dev-secret";
+const SESSION_SECRET = process.env.SESSION_SECRET || (PROD ? null : "haha-shop-dev-secret");
+if (!SESSION_SECRET) {
+  console.error("[startup] FATAL: SESSION_SECRET is required in production");
+  process.exit(1);
+}
+if (SESSION_SECRET.length < 32) console.warn("[security] SESSION_SECRET should be at least 32 characters");
 const TRUEMONEY_MOBILE = process.env.TRUEMONEY_MOBILE || "0624712534";
 const ADMIN_IDLE_MS = 30 * 60 * 1000;
 
-if (!process.env.SESSION_SECRET || process.env.SESSION_SECRET.length < 32) {
-  console.warn("[security] SESSION_SECRET should be a strong value in .env");
-}
-
 const app = express();
-app.set("trust proxy", 1);
+app.set("trust proxy", Number(process.env.TRUST_PROXY || 1));
 app.disable("x-powered-by");
 
+const TURNSTILE = "https://challenges.cloudflare.com";
 app.use(
   helmet({
     contentSecurityPolicy: {
       useDefaults: true,
       directives: {
         "default-src": ["'self'"],
-        "script-src": ["'self'"],
+        "script-src": ["'self'", ...(turnstileOn() ? [TURNSTILE] : [])],
         "style-src": ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
         "img-src": ["'self'", "data:", "blob:"],
         "connect-src": ["'self'"],
         "font-src": ["'self'", "data:", "https://fonts.gstatic.com"],
+        "frame-src": turnstileOn() ? [TURNSTILE] : ["'none'"],
         "object-src": ["'none'"],
         "base-uri": ["'self'"],
         "form-action": ["'self'"],
         "frame-ancestors": ["'none'"],
+        "script-src-attr": ["'none'"],
       },
     },
     crossOriginEmbedderPolicy: false,
     referrerPolicy: { policy: "strict-origin-when-cross-origin" },
+    strictTransportSecurity: PROD ? { maxAge: 31536000, includeSubDomains: true } : false,
   })
 );
+app.use((_req, res, next) => {
+  res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=()");
+  next();
+});
 
-app.use(express.json({ limit: "64kb" }));
-app.use(express.urlencoded({ extended: false, limit: "64kb" }));
+app.use(express.json({ limit: "32kb" }));
+app.use(express.urlencoded({ extended: false, limit: "32kb" }));
 
 app.use(
   session({
     name: "hahashop.sid",
     secret: SESSION_SECRET,
+    store: new SqliteStore(),
     resave: false,
     saveUninitialized: false,
     rolling: true,
+    proxy: true,
     cookie: {
       httpOnly: true,
       sameSite: "strict",
-      secure: "auto",
+      secure: "auto", // Secure on https (Render terminates TLS; trust proxy makes req.secure true)
       maxAge: 7 * 24 * 60 * 60 * 1000,
     },
   })
 );
 
-const authLimiter = rateLimit({
-  windowMs: 60 * 1000,
-  max: 5,
-  standardHeaders: true,
-  legacyHeaders: false,
-  keyGenerator: (req) => clientIp(req),
-  validate: { keyGeneratorIpFallback: false },
-  message: { ok: false, message: "พยายามบ่อยเกินไป กรุณารอสักครู่" },
+const limiter = (windowMs, max, message) => rateLimit({
+  windowMs, max, standardHeaders: true, legacyHeaders: false,
+  keyGenerator: (req) => clientIp(req), validate: { keyGeneratorIpFallback: false },
+  message: { ok: false, error: "RATE_LIMIT", message },
 });
-const topupLimiter = rateLimit({
-  windowMs: 60 * 1000,
-  max: 10,
-  standardHeaders: true,
-  legacyHeaders: false,
-  keyGenerator: (req) => clientIp(req),
-  validate: { keyGeneratorIpFallback: false },
-  message: { ok: false, message: "ส่งคำขอเติมเครดิตบ่อยเกินไป" },
-});
-const buyLimiter = rateLimit({
-  windowMs: 60 * 1000,
-  max: 30,
-  standardHeaders: true,
-  legacyHeaders: false,
-  keyGenerator: (req) => clientIp(req),
-  validate: { keyGeneratorIpFallback: false },
-  message: { ok: false, message: "ส่งคำขอบ่อยเกินไป" },
-});
-const apiLimiter = rateLimit({
-  windowMs: 60 * 1000,
-  max: 180,
-  standardHeaders: true,
-  legacyHeaders: false,
-  keyGenerator: (req) => clientIp(req),
-  validate: { keyGeneratorIpFallback: false },
-  message: { ok: false, message: "คำขอบ่อยเกินไป" },
-});
+const topupLimiter = limiter(60 * 1000, 6, "ส่งคำขอเติมเครดิตบ่อยเกินไป");
+const buyLimiter = limiter(60 * 1000, 30, "ส่งคำขอบ่อยเกินไป");
+app.use("/api/", limiter(60 * 1000, 240, "คำขอบ่อยเกินไป"));
 
-app.use("/api/", apiLimiter);
-
-// Origin + CSRF for mutating API requests
-const CSRF_SKIP = new Set(["/csrf", "/health", "/healthz", "/api/csrf", "/api/health"]);
+// Origin + CSRF for every mutating API request (no exceptions)
 app.use("/api", (req, res, next) => {
   const method = req.method.toUpperCase();
   if (method === "GET" || method === "HEAD" || method === "OPTIONS") return next();
-  if (!originOk(req)) {
-    return res.status(403).json({ ok: false, message: "คำขอไม่ถูกต้อง" });
-  }
-  const pth = req.path || "";
-  if (CSRF_SKIP.has(pth) || CSRF_SKIP.has("/api" + pth)) return next();
-  // Allow first login/signup only when session has no csrf yet (bootstrap)
-  if ((pth === "/login" || pth === "/signup") && !req.session.csrfToken) {
-    return next();
-  }
+  if (!originOk(req)) return res.status(403).json({ ok: false, error: "ORIGIN", message: "คำขอไม่ถูกต้อง" });
   if (!csrfOk(req)) {
-    return res.status(403).json({ ok: false, error: "CSRF", message: "เซสชันหมดอายุหรือโทเคนไม่ถูกต้อง กรุณารีเฟรชหน้า" });
+    return res.status(403).json({ ok: false, error: "CSRF", message: "เซสชันหมดอายุหรือโทเคนไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง" });
   }
   next();
 });
 
 app.get("/api/csrf", (req, res) => {
   const token = ensureCsrf(req);
-  res.json({ ok: true, csrfToken: token });
+  res.set("Cache-Control", "no-store");
+  req.session.save(() => res.json({ ok: true, csrfToken: token }));
 });
+app.get("/api/captcha.svg", captchaImage);
 
 function publicUser(row) {
   if (!row) return null;
+  const isAdmin = (row.role || "user") === "admin";
   return {
     id: row.id,
     username: row.username,
     email: row.email || null,
+    emailVerified: isVerified(row),
     discord: !!row.discord_id,
+    google: !!row.google_id,
     balance: Number(row.balance) || 0,
-    role: row.role || "user",
-    isAdmin: (row.role || "user") === "admin",
+    points: Number(row.points) || 0,
+    role: isAdmin ? "admin" : "user",
+    isAdmin,
   };
 }
+const getUserById = (id) => db.prepare("SELECT * FROM users WHERE id = ?").get(id);
 function requireAuth(req, res, next) {
-  if (!req.session.userId) {
-    return res.status(401).json({ ok: false, error: "UNAUTHORIZED", message: "กรุณาเข้าสู่ระบบก่อน" });
-  }
+  if (!req.session.userId) return res.status(401).json({ ok: false, error: "UNAUTHORIZED", message: "กรุณาเข้าสู่ระบบก่อน" });
   next();
 }
-function getUserById(id) {
-  return db.prepare("SELECT id, username, email, discord_id, balance, password_hash, role, pw_version FROM users WHERE id = ?").get(id);
+function requireVerified(req, res, next) {
+  const u = getUserById(req.session.userId);
+  if (!u) return res.status(401).json({ ok: false, error: "UNAUTHORIZED", message: "กรุณาเข้าสู่ระบบก่อน" });
+  if (!isVerified(u)) return res.status(403).json({ ok: false, error: "EMAIL_UNVERIFIED", message: "กรุณายืนยันอีเมลก่อนเติมเงินหรือซื้อสินค้า" });
+  req.user = u;
+  next();
 }
 
-// Admin idle timeout
+// Session validity: password changes end other sessions; admin idle timeout
 app.use((req, res, next) => {
   if (!req.session || !req.session.userId) return next();
   const now = Date.now();
-  // Invalidate sessions created before the user's last password change
-  const pv = db.prepare("SELECT pw_version FROM users WHERE id = ?").get(req.session.userId);
-  if (!pv || Number(pv.pw_version || 0) !== Number(req.session.pwv || 0)) {
-    return req.session.destroy(() => {
-      res.clearCookie("hahashop.sid");
-      if (req.path.startsWith("/api/") && req.path !== "/api/me" && req.path !== "/api/csrf") {
-        return res.status(401).json({ ok: false, message: "เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่" });
+  const u = db.prepare("SELECT pw_version, role FROM users WHERE id = ?").get(req.session.userId);
+  const expired = !u || Number(u.pw_version || 0) !== Number(req.session.pwv || 0) ||
+    (u.role === "admin" && now - (req.session.lastActive || now) > ADMIN_IDLE_MS);
+  if (expired) {
+    return req.session.regenerate(() => {
+      if (req.path.startsWith("/api/") && !["/api/me", "/api/csrf", "/api/config"].includes(req.path)) {
+        return res.status(401).json({ ok: false, error: "SESSION_EXPIRED", message: "เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่" });
       }
       next();
     });
-  }
-  if (req.session.isAdmin) {
-    const last = req.session.lastActive || now;
-    if (now - last > ADMIN_IDLE_MS) {
-      return req.session.destroy(() => {
-        res.clearCookie("hahashop.sid");
-        if (req.path.startsWith("/api/")) {
-          return res.status(401).json({ ok: false, message: "เซสชันแอดมินหมดอายุ กรุณาเข้าสู่ระบบใหม่" });
-        }
-        next();
-      });
-    }
   }
   req.session.lastActive = now;
   next();
 });
 
-
 function startSession(req, res, user, cb) {
-  const oldCsrf = req.session.csrfToken;
-  req.session.regenerate((err) => {
+  req.session.regenerate((err) => { // new session id on every login (prevents fixation)
     if (err) return cb(err);
     req.session.userId = user.id;
     req.session.isAdmin = (user.role || "user") === "admin";
     req.session.pwv = Number(user.pw_version || 0);
     req.session.lastActive = Date.now();
-    req.session.csrfToken = oldCsrf || ensureCsrf(req);
-    cb(null);
+    ensureCsrf(req);
+    req.session.save(cb);
   });
 }
-mountAuthExtra(app, { startSession });
-
-app.get("/api/stats", (_req, res) => {
-  const users = db.prepare(`SELECT COUNT(*) AS c FROM users WHERE role != 'admin'`).get().c;
-  const products = db.prepare(`SELECT COUNT(*) AS c FROM products WHERE deleted = 0`).get().c;
-  const stock = db.prepare(`SELECT COALESCE(SUM(stock), 0) AS c FROM products WHERE deleted = 0`).get().c;
-  const orders = db.prepare(`SELECT COUNT(*) AS c FROM orders`).get().c;
-  const topups = db.prepare(`SELECT COUNT(*) AS c FROM transactions WHERE type='topup' AND status='success'`).get().c;
-  const plays = db.prepare(`SELECT COUNT(*) AS c FROM minigame_plays`).get().c;
-  res.json({
-    ok: true,
-    stats: {
-      users: Number(users) || 0,
-      products: Number(products) || 0,
-      stock: Number(stock) || 0,
-      completed: Number(orders) + Number(topups) + Number(plays),
-    },
-  });
-});
+const account = mountAccount(app, { startSession, publicUser, requireAuth });
 
 app.get("/healthz", (_req, res) => res.status(200).type("text/plain").send("ok"));
 app.get("/api/health", (_req, res) => res.json({ ok: true, shop: "HAHA SHOP" }));
 
 app.get("/api/me", (req, res) => {
-  if (!req.session.userId) return res.json({ ok: true, user: null });
-  const user = getUserById(req.session.userId);
-  if (!user) {
-    req.session.destroy(() => {});
-    return res.json({ ok: true, user: null });
-  }
-  res.json({ ok: true, user: publicUser(user) });
-});
-
-app.post("/api/signup", authLimiter, (req, res) => {
-  const ip = clientIp(req);
-  if (isLoginLocked(ip)) {
-    return res.status(429).json({ ok: false, message: "ล็อกชั่วคราวเนื่องจากพยายามผิดหลายครั้ง" });
-  }
-  const username = String(req.body?.username || "").trim();
-  const password = String(req.body?.password || "");
-  const emailRaw = String(req.body?.email || "").trim();
-  const email = normEmail(emailRaw);
-  if (!/^[A-Za-z0-9_]{3,24}$/.test(username)) {
-    return res.status(400).json({ ok: false, message: "ชื่อผู้ใช้ต้องเป็น a-z, 0-9, _ ความยาว 3–24 ตัวอักษร" });
-  }
-  if (!email) {
-    return res.status(400).json({ ok: false, message: "กรุณากรอกอีเมลให้ถูกต้อง" });
-  }
-  if (password.length < 6 || password.length > 72) {
-    return res.status(400).json({ ok: false, message: "รหัสผ่านต้องยาวอย่างน้อย 6 ตัวอักษร" });
-  }
-  if (username.toLowerCase() === "admin") {
-    return res.status(403).json({ ok: false, message: "ไม่สามารถสมัครชื่อนี้ได้" });
-  }
-  if (db.prepare("SELECT id FROM users WHERE username = ? COLLATE NOCASE").get(username)) {
-    return res.status(409).json({ ok: false, message: "ชื่อผู้ใช้นี้ถูกใช้แล้ว" });
-  }
-  if (db.prepare("SELECT id FROM users WHERE email = ? COLLATE NOCASE").get(email)) {
-    return res.status(409).json({ ok: false, message: "อีเมลนี้ถูกใช้แล้ว ลองเข้าสู่ระบบหรือกดลืมรหัสผ่าน" });
-  }
-  let info;
-  try {
-    info = db.prepare("INSERT INTO users (username, password_hash, balance, role, email) VALUES (?, ?, 0, 'user', ?)")
-      .run(username, bcrypt.hashSync(password, 10), email);
-  } catch (_) {
-    return res.status(409).json({ ok: false, message: "ชื่อผู้ใช้หรืออีเมลนี้ถูกใช้แล้ว" });
-  }
-  const user = getUserById(info.lastInsertRowid);
-  startSession(req, res, user, (err) => {
-    if (err) return res.status(500).json({ ok: false, message: "สมัครไม่สำเร็จ" });
-    res.json({ ok: true, user: publicUser(user), csrfToken: req.session.csrfToken, message: "สมัครสมาชิกสำเร็จ" });
-  });
-});
-
-app.post("/api/login", authLimiter, (req, res) => {
-  const ip = clientIp(req);
-  if (isLoginLocked(ip)) {
-    return res.status(429).json({ ok: false, message: "ล็อกชั่วคราวเนื่องจากพยายามผิดหลายครั้ง กรุณารอ 15 นาที" });
-  }
-  const ident = String(req.body?.identifier ?? req.body?.username ?? "").trim().slice(0, 254);
-  const password = String(req.body?.password || "");
-  const user = ident.includes("@")
-    ? db.prepare("SELECT * FROM users WHERE email = ? COLLATE NOCASE").get(ident.toLowerCase())
-    : db.prepare("SELECT * FROM users WHERE username = ? COLLATE NOCASE").get(ident);
-  if (!user || !bcrypt.compareSync(password, user.password_hash)) {
-    recordFailedLogin(ip);
-    return res.status(401).json({ ok: false, message: "ชื่อผู้ใช้/อีเมล หรือรหัสผ่านไม่ถูกต้อง" });
-  }
-  clearFailedLogin(ip);
-  startSession(req, res, user, (err) => {
-    if (err) return res.status(500).json({ ok: false, message: "เข้าสู่ระบบไม่สำเร็จ" });
-    res.json({ ok: true, user: publicUser(user), csrfToken: req.session.csrfToken, message: "เข้าสู่ระบบสำเร็จ" });
-  });
+  res.set("Cache-Control", "no-store");
+  const user = req.session.userId ? getUserById(req.session.userId) : null;
+  res.json({ ok: true, user: publicUser(user), verificationRequired: verificationRequired() });
 });
 
 app.post("/api/logout", (req, res) => {
@@ -337,44 +214,17 @@ app.post("/api/logout", (req, res) => {
   });
 });
 
-app.get("/api/transactions", requireAuth, (req, res) => {
-  const rows = db.prepare(
-    `SELECT id, type, amount, voucher_hash, status, message, created_at
-     FROM transactions WHERE user_id = ? ORDER BY id DESC LIMIT 50`
-  ).all(req.session.userId);
-  res.json({ ok: true, transactions: rows });
-});
-
-app.post("/api/topup", requireAuth, topupLimiter, async (req, res) => {
-  const link = String(req.body?.link || "").trim();
-  if (!link) return res.status(400).json({ ok: false, message: THAI_ERRORS.INVALID_LINK });
-  const preview = extractHash(link);
-  if (preview.error) {
-    db.prepare(`INSERT INTO transactions (user_id, type, amount, voucher_hash, status, message) VALUES (?, 'topup', 0, NULL, 'failed', ?)`)
-      .run(req.session.userId, preview.message);
-    return res.status(400).json({ ok: false, error: preview.error, message: preview.message });
-  }
-  const prior = db.prepare(`SELECT id FROM transactions WHERE voucher_hash = ? AND status = 'success'`).get(preview.hash);
-  if (prior) {
-    return res.status(400).json({ ok: false, error: "ALREADY_USED_HERE", message: THAI_ERRORS.ALREADY_USED_HERE });
-  }
-  const result = await redeemVoucher(link, TRUEMONEY_MOBILE);
-  if (!result.ok) {
-    db.prepare(`INSERT INTO transactions (user_id, type, amount, voucher_hash, status, message, raw_json) VALUES (?, 'topup', 0, ?, 'failed', ?, ?)`)
-      .run(req.session.userId, result.hash || null, result.message, result.raw ? JSON.stringify(result.raw).slice(0, 4000) : null);
-    return res.status(400).json({ ok: false, error: result.error, message: result.message });
-  }
-  try {
-    const user = db.transaction(() => {
-      db.prepare(`UPDATE users SET balance = balance + ? WHERE id = ?`).run(result.amount, req.session.userId);
-      db.prepare(`INSERT INTO transactions (user_id, type, amount, voucher_hash, status, message, raw_json) VALUES (?, 'topup', ?, ?, 'success', ?, ?)`)
-        .run(req.session.userId, result.amount, result.hash, `เติมเครดิตสำเร็จ +${result.amount} บาท`, result.raw ? JSON.stringify(result.raw).slice(0, 4000) : null);
-      return getUserById(req.session.userId);
-    })();
-    res.json({ ok: true, amount: result.amount, balance: user.balance, message: `เติมเครดิตสำเร็จ +${result.amount.toLocaleString("th-TH")} บาท`, user: publicUser(user) });
-  } catch {
-    return res.status(400).json({ ok: false, error: "ALREADY_USED_HERE", message: THAI_ERRORS.ALREADY_USED_HERE });
-  }
+app.get("/api/stats", (_req, res) => {
+  const one = (sql) => Number(db.prepare(sql).get().c) || 0;
+  res.json({
+    ok: true,
+    stats: {
+      users: one(`SELECT COUNT(*) AS c FROM users WHERE role != 'admin'`),
+      products: one(`SELECT COUNT(*) AS c FROM products WHERE deleted = 0`),
+      stock: one(`SELECT COALESCE(SUM(stock), 0) AS c FROM products WHERE deleted = 0`),
+      completed: one(`SELECT COUNT(*) AS c FROM orders`) + one(`SELECT COUNT(*) AS c FROM transactions WHERE type='topup' AND status='success'`) + one(`SELECT COUNT(*) AS c FROM minigame_plays`),
+    },
+  });
 });
 
 app.get("/api/config", (_req, res) => {
@@ -386,203 +236,240 @@ app.get("/api/config", (_req, res) => {
     announcement: getSetting("announcement", "ยินดีต้อนรับสู่ HAHA SHOP"),
     contact_url: getSetting("contact_url", "#"),
     contact_label: getSetting("contact_label", "ติดต่อแอดมิน"),
-    auth: { discord: discordConfigured(), emailReset: smtpConfigured() },
-    topup: { method: "truemoney_gift", hint: "วางลิงก์ซองอั่งเปา TrueMoney เพื่อเติมเครดิต" },
+    auth: { ...account.oauthConfigured(), emailReset: smtpConfigured(), verificationRequired: verificationRequired() },
+    captcha: captchaConfig(),
   });
 });
 
+/* —— Ledger / history (own only) —— */
+app.get("/api/ledger", requireAuth, (req, res) => {
+  const rows = db.prepare(`SELECT id, delta, balance_after, reason, ref, created_at FROM ledger WHERE user_id = ? ORDER BY id DESC LIMIT 100`).all(req.session.userId);
+  res.json({ ok: true, ledger: rows });
+});
+app.get("/api/transactions", requireAuth, (req, res) => {
+  const rows = db.prepare(`SELECT id, type, amount, status, message, created_at FROM transactions WHERE user_id = ? ORDER BY id DESC LIMIT 50`).all(req.session.userId);
+  res.json({ ok: true, transactions: rows });
+});
+
+/* —— Top-up (TrueMoney angpao) —— */
+app.post("/api/topup", requireAuth, requireVerified, topupLimiter, async (req, res) => {
+  const userId = req.user.id;
+  const link = String(req.body?.link || "").trim().slice(0, 300);
+  if (!link) return res.status(400).json({ ok: false, message: THAI_ERRORS.INVALID_LINK });
+  const preview = extractHash(link);
+  if (preview.error) return res.status(400).json({ ok: false, error: preview.error, message: preview.message });
+  // Claim the voucher first: the unique index makes a voucher redeemable once, even under concurrent requests.
+  let txId;
+  try {
+    txId = db.prepare(`INSERT INTO transactions (user_id, type, amount, voucher_hash, status, message) VALUES (?, 'topup', 0, ?, 'pending', 'กำลังตรวจสอบซอง')`)
+      .run(userId, preview.hash).lastInsertRowid;
+  } catch (_) {
+    return res.status(400).json({ ok: false, error: "ALREADY_USED_HERE", message: THAI_ERRORS.ALREADY_USED_HERE });
+  }
+  const result = await redeemVoucher(link, TRUEMONEY_MOBILE);
+  const raw = result.raw ? JSON.stringify(result.raw).slice(0, 4000) : null;
+  if (!result.ok) {
+    const review = !!(result.indeterminate || result.review);
+    db.prepare(`UPDATE transactions SET status = ?, message = ?, raw_json = ? WHERE id = ?`)
+      .run(review ? "review" : "failed", result.message, raw, txId);
+    return res.status(400).json({ ok: false, error: result.error, message: review ? result.message + " (รายการนี้รอแอดมินตรวจสอบ)" : result.message });
+  }
+  try {
+    const user = db.transaction(() => {
+      const u = db.prepare(`UPDATE transactions SET status = 'success', amount = ?, message = ?, raw_json = ? WHERE id = ? AND status = 'pending'`)
+        .run(result.amount, `เติมเครดิตสำเร็จ +${result.amount} บาท`, raw, txId);
+      if (u.changes !== 1) throw new Error("tx state");
+      applyBalance(userId, result.amount, { reason: "topup", ref: `tx:${txId}` }); // amount reported by TrueMoney only
+      return getUserById(userId);
+    })();
+    res.json({ ok: true, amount: result.amount, balance: user.balance, user: publicUser(user), message: `เติมเครดิตสำเร็จ +${result.amount.toLocaleString("th-TH")} บาท` });
+  } catch (e) {
+    console.error("[topup] credit failed:", e.message);
+    db.prepare(`UPDATE transactions SET status = 'review' WHERE id = ?`).run(txId);
+    res.status(500).json({ ok: false, message: "บันทึกเครดิตไม่สำเร็จ รายการนี้รอแอดมินตรวจสอบ" });
+  }
+});
+
 /* —— Products —— */
+const PUBLIC_PRODUCT_COLS = "id, sku, title, description, category, price, stock, image, installment, example, created_at";
 app.get("/api/products", (req, res) => {
-  const q = String(req.query.q || "").trim();
-  const category = String(req.query.category || "").trim();
-  const sort = String(req.query.sort || "newest"); // newest | price_asc | price_desc
+  const q = String(req.query.q || "").trim().slice(0, 80);
+  const category = String(req.query.category || "").trim().slice(0, 40);
+  const sort = String(req.query.sort || "newest");
   const min = req.query.min !== undefined && req.query.min !== "" ? Number(req.query.min) : null;
   const max = req.query.max !== undefined && req.query.max !== "" ? Number(req.query.max) : null;
-
-  let sql = `SELECT * FROM products WHERE deleted = 0`;
+  let sql = `SELECT ${PUBLIC_PRODUCT_COLS} FROM products WHERE deleted = 0`;
   const params = [];
   if (q) { sql += ` AND (title LIKE ? OR sku LIKE ? OR description LIKE ?)`; params.push(`%${q}%`, `%${q}%`, `%${q}%`); }
   if (category) { sql += ` AND category = ?`; params.push(category); }
   if (min !== null && Number.isFinite(min)) { sql += ` AND price >= ?`; params.push(min); }
   if (max !== null && Number.isFinite(max)) { sql += ` AND price <= ?`; params.push(max); }
-  if (sort === "price_asc") sql += ` ORDER BY price ASC, id DESC`;
-  else if (sort === "price_desc") sql += ` ORDER BY price DESC, id DESC`;
-  else sql += ` ORDER BY id DESC`;
-
-  const products = db.prepare(sql).all(...params);
-  res.json({ ok: true, products });
+  sql += sort === "price_asc" ? ` ORDER BY price ASC, id DESC` : sort === "price_desc" ? ` ORDER BY price DESC, id DESC` : ` ORDER BY id DESC`;
+  res.json({ ok: true, products: db.prepare(sql + " LIMIT 200").all(...params) });
 });
 
 app.get("/api/products/:id", (req, res) => {
-  const p = db.prepare("SELECT * FROM products WHERE id = ? AND deleted = 0").get(req.params.id);
+  const p = db.prepare(`SELECT ${PUBLIC_PRODUCT_COLS} FROM products WHERE id = ? AND deleted = 0`).get(Number(req.params.id));
   if (!p) return res.status(404).json({ ok: false, message: "ไม่พบสินค้า" });
   res.json({ ok: true, product: p });
 });
 
-app.post("/api/products/:id/buy", requireAuth, buyLimiter, (req, res) => {
+const fail = (status, code, message) => Object.assign(new Error(message), { status, code });
+
+app.post("/api/products/:id/buy", requireAuth, requireVerified, buyLimiter, (req, res) => {
   const productId = Number(req.params.id);
+  const b = req.body || {};
+  if (!Number.isInteger(productId) || productId <= 0) return res.status(400).json({ ok: false, message: "รหัสสินค้าไม่ถูกต้อง" });
+  // Quantity is fixed at 1 per order; any other value is a tampered request.
+  if (b.quantity !== undefined && Number(b.quantity) !== 1) return res.status(400).json({ ok: false, error: "BAD_QUANTITY", message: "จำนวนไม่ถูกต้อง" });
+  const idem = String(req.get("Idempotency-Key") || b.idempotency_key || "").trim();
+  if (idem && !/^[A-Za-z0-9_-]{8,64}$/.test(idem)) return res.status(400).json({ ok: false, message: "Idempotency-Key ไม่ถูกต้อง" });
+  const userId = req.user.id;
   try {
-    const result = db.transaction(() => {
-      const p = db.prepare("SELECT * FROM products WHERE id = ? AND deleted = 0").get(productId);
-      if (!p) throw Object.assign(new Error("ไม่พบสินค้า"), { status: 404 });
-      if (p.stock <= 0 || Number(p.price) < 0) throw Object.assign(new Error("สินค้าหมดแล้ว"), { status: 400 });
-      const user = getUserById(req.session.userId);
-      if (user.balance < p.price) {
-        throw Object.assign(new Error(`เครดิตไม่พอ (ต้องการ ${p.price.toFixed(2)} บาท มี ${user.balance.toFixed(2)} บาท)`), { status: 400, code: "INSUFFICIENT" });
+    // better-sqlite3 transactions are synchronous: no other request can interleave → race/double-spend safe.
+    const out = db.transaction(() => {
+      if (idem) {
+        const prev = db.prepare("SELECT id FROM orders WHERE user_id = ? AND idem_key = ?").get(userId, idem);
+        if (prev) return { orderId: prev.id, replay: true };
       }
-      const bal = db.prepare("UPDATE users SET balance = balance - ? WHERE id = ? AND balance >= ?").run(p.price, user.id, p.price);
-      if (bal.changes !== 1) throw Object.assign(new Error("เครดิตไม่พอ"), { status: 400, code: "INSUFFICIENT" });
-      const stock = db.prepare("UPDATE products SET stock = stock - 1 WHERE id = ? AND stock > 0").run(p.id);
-      if (stock.changes !== 1) throw Object.assign(new Error("สินค้าหมดแล้ว"), { status: 400 });
-      const order = db.prepare(
-        `INSERT INTO orders (user_id, product_id, product_title, price, status) VALUES (?, ?, ?, ?, 'paid')`
-      ).run(user.id, p.id, p.title, p.price);
-      db.prepare(
-        `INSERT INTO transactions (user_id, type, amount, status, message) VALUES (?, 'purchase', ?, 'success', ?)`
-      ).run(user.id, -p.price, `ซื้อสินค้า ${p.title}`);
-      return {
-        orderId: order.lastInsertRowid,
-        user: publicUser(getUserById(user.id)),
-        product: db.prepare("SELECT * FROM products WHERE id = ?").get(p.id),
-      };
+      const p = db.prepare("SELECT * FROM products WHERE id = ? AND deleted = 0").get(productId);
+      if (!p) throw fail(404, "NOT_FOUND", "ไม่พบสินค้า");
+      if (b.expected_price !== undefined && Math.abs(Number(b.expected_price) - p.price) > 0.001) {
+        throw fail(409, "PRICE_CHANGED", `ราคาสินค้าเปลี่ยนเป็น ${p.price.toFixed(2)} บาท กรุณาตรวจสอบอีกครั้ง`);
+      }
+      if (!(p.price >= 0)) throw fail(400, "BAD_PRICE", "สินค้านี้ซื้อไม่ได้");
+      const st = db.prepare("UPDATE products SET stock = stock - 1 WHERE id = ? AND stock > 0 AND deleted = 0").run(p.id);
+      if (st.changes !== 1) throw fail(400, "SOLD_OUT", "สินค้าหมดแล้ว");
+      const orderId = db.prepare(`INSERT INTO orders (user_id, product_id, product_title, price, status, idem_key) VALUES (?, ?, ?, ?, 'paid', ?)`)
+        .run(userId, p.id, p.title, p.price, idem || null).lastInsertRowid;
+      applyBalance(userId, -p.price, { reason: "purchase", ref: `order:${orderId}` }); // throws INSUFFICIENT → full rollback
+      let delivered = p.delivery_note || null, itemId = null;
+      const hasItems = db.prepare("SELECT COUNT(*) AS c FROM product_items WHERE product_id = ?").get(p.id).c > 0;
+      if (hasItems) {
+        const item = db.prepare("SELECT id, secret FROM product_items WHERE product_id = ? AND order_id IS NULL ORDER BY id LIMIT 1").get(p.id);
+        if (!item) throw fail(400, "SOLD_OUT", "สินค้าหมดแล้ว");
+        if (db.prepare("UPDATE product_items SET order_id = ? WHERE id = ? AND order_id IS NULL").run(orderId, item.id).changes !== 1) throw fail(409, "SOLD_OUT", "สินค้าหมดแล้ว");
+        delivered = item.secret; itemId = item.id;
+      }
+      db.prepare("UPDATE orders SET item_id = ?, delivered = ? WHERE id = ?").run(itemId, delivered, orderId);
+      db.prepare("UPDATE users SET points = points + ? WHERE id = ?").run(Math.floor(p.price / 10), userId);
+      db.prepare(`INSERT INTO transactions (user_id, type, amount, status, message) VALUES (?, 'purchase', ?, 'success', ?)`).run(userId, -p.price, `ซื้อสินค้า ${p.title}`);
+      return { orderId, replay: false };
     })();
-    res.json({ ok: true, message: "ซื้อสินค้าสำเร็จ", ...result });
+    const order = db.prepare("SELECT id, product_id, product_title, price, status, delivered, created_at FROM orders WHERE id = ? AND user_id = ?").get(out.orderId, userId);
+    res.json({ ok: true, replay: out.replay, message: out.replay ? "คำสั่งซื้อนี้ทำรายการไปแล้ว" : "ซื้อสินค้าสำเร็จ", order, user: publicUser(getUserById(userId)) });
   } catch (e) {
-    const msg = e.status ? e.message : "ซื้อไม่สำเร็จ";
-    res.status(e.status || 500).json({ ok: false, error: e.code || "BUY_FAILED", message: msg });
+    if (e.code === "SQLITE_CONSTRAINT_UNIQUE" && idem) return res.status(409).json({ ok: false, error: "DUPLICATE", message: "คำสั่งซื้อนี้ทำรายการไปแล้ว" });
+    if (!e.status) console.error("[buy] failed:", e.message);
+    res.status(e.status || 500).json({ ok: false, error: e.code || "BUY_FAILED", message: e.status ? e.message : "ซื้อไม่สำเร็จ" });
   }
 });
 
 app.get("/api/orders", requireAuth, (req, res) => {
   const orders = db.prepare(
-    `SELECT id, product_id, product_title, price, status, created_at FROM orders WHERE user_id = ? ORDER BY id DESC LIMIT 50`
+    `SELECT id, product_id, product_title, price, status, created_at, (delivered IS NOT NULL) AS has_delivery FROM orders WHERE user_id = ? ORDER BY id DESC LIMIT 50`
   ).all(req.session.userId);
   res.json({ ok: true, orders });
+});
+// Account credentials are only ever returned to the buyer of that order (IDOR-safe)
+app.get("/api/orders/:id", requireAuth, (req, res) => {
+  res.set("Cache-Control", "no-store");
+  const o = db.prepare(`SELECT id, product_id, product_title, price, status, delivered, created_at FROM orders WHERE id = ? AND user_id = ?`)
+    .get(Number(req.params.id), req.session.userId);
+  if (!o) return res.status(404).json({ ok: false, message: "ไม่พบคำสั่งซื้อ" });
+  res.json({ ok: true, order: o });
 });
 
 /* —— Auctions —— */
 app.get("/api/auctions", (_req, res) => {
   const rows = db.prepare(`
-    SELECT a.*, u.username AS current_bidder
-    FROM auctions a LEFT JOIN users u ON u.id = a.current_bidder_id
-    ORDER BY a.id DESC
-  `).all();
+    SELECT a.id, a.title, a.description, a.image, a.start_price, a.current_bid, a.ends_at, a.example, a.created_at, u.username AS current_bidder
+    FROM auctions a LEFT JOIN users u ON u.id = a.current_bidder_id ORDER BY a.id DESC`).all();
   res.json({ ok: true, auctions: rows });
 });
 
-app.post("/api/auctions/:id/bid", requireAuth, (req, res) => {
+app.post("/api/auctions/:id/bid", requireAuth, requireVerified, buyLimiter, (req, res) => {
   const auctionId = Number(req.params.id);
-  const amount = Number(req.body?.amount);
-  if (!Number.isFinite(amount) || amount <= 0) {
-    return res.status(400).json({ ok: false, message: "กรุณาใส่ราคาประมูลที่ถูกต้อง" });
-  }
+  const amount = Math.round(Number(req.body?.amount) * 100) / 100;
+  if (!Number.isFinite(amount) || amount <= 0 || amount > 10_000_000) return res.status(400).json({ ok: false, message: "กรุณาใส่ราคาประมูลที่ถูกต้อง" });
   try {
     const out = db.transaction(() => {
       const a = db.prepare("SELECT * FROM auctions WHERE id = ?").get(auctionId);
-      if (!a) throw Object.assign(new Error("ไม่พบรายการประมูล"), { status: 404 });
-      if (amount <= a.current_bid) {
-        throw Object.assign(new Error(`ราคาประมูลต้องสูงกว่า ${a.current_bid.toFixed(2)} บาท`), { status: 400 });
-      }
-      const user = getUserById(req.session.userId);
-      if (user.balance < amount) {
-        throw Object.assign(new Error("เครดิตไม่พอสำหรับราคาประมูลนี้"), { status: 400, code: "INSUFFICIENT" });
-      }
-      // Hold is soft: we only check balance; full escrow omitted for demo
-      db.prepare("UPDATE auctions SET current_bid = ?, current_bidder_id = ? WHERE id = ?")
-        .run(amount, user.id, a.id);
-      db.prepare("INSERT INTO auction_bids (auction_id, user_id, amount) VALUES (?, ?, ?)")
-        .run(a.id, user.id, amount);
-      return db.prepare(`
-        SELECT a.*, u.username AS current_bidder
-        FROM auctions a LEFT JOIN users u ON u.id = a.current_bidder_id WHERE a.id = ?
-      `).get(a.id);
+      if (!a) throw fail(404, "NOT_FOUND", "ไม่พบรายการประมูล");
+      if (a.ends_at && Date.parse(a.ends_at.replace(" ", "T") + "Z") < Date.now()) throw fail(400, "ENDED", "การประมูลจบแล้ว");
+      if (amount <= a.current_bid) throw fail(400, "LOW_BID", `ราคาประมูลต้องสูงกว่า ${a.current_bid.toFixed(2)} บาท`);
+      const user = getUserById(req.user.id);
+      if (user.balance < amount) throw fail(400, "INSUFFICIENT", "เครดิตไม่พอสำหรับราคาประมูลนี้");
+      // Soft hold: balance is checked, not deducted, until the admin settles the auction.
+      const r = db.prepare("UPDATE auctions SET current_bid = ?, current_bidder_id = ? WHERE id = ? AND current_bid < ?").run(amount, user.id, a.id, amount);
+      if (r.changes !== 1) throw fail(409, "OUTBID", "มีผู้เสนอราคาสูงกว่าแล้ว");
+      db.prepare("INSERT INTO auction_bids (auction_id, user_id, amount) VALUES (?, ?, ?)").run(a.id, user.id, amount);
+      return db.prepare(`SELECT a.id, a.title, a.current_bid, u.username AS current_bidder FROM auctions a LEFT JOIN users u ON u.id = a.current_bidder_id WHERE a.id = ?`).get(a.id);
     })();
-    res.json({ ok: true, message: "เสนอราคาสำเร็จ", auction: out, user: publicUser(getUserById(req.session.userId)) });
+    res.json({ ok: true, message: "เสนอราคาสำเร็จ", auction: out, user: publicUser(getUserById(req.user.id)) });
   } catch (e) {
-    res.status(e.status || 500).json({ ok: false, error: e.code || "BID_FAILED", message: e.message || "ประมูลไม่สำเร็จ" });
+    res.status(e.status || 500).json({ ok: false, error: e.code || "BID_FAILED", message: e.status ? e.message : "ประมูลไม่สำเร็จ" });
   }
 });
 
 /* —— Minigames —— */
 app.get("/api/minigames", (_req, res) => {
-  const games = db.prepare("SELECT * FROM minigames WHERE deleted = 0 ORDER BY id").all();
-  res.json({ ok: true, minigames: games });
+  res.json({ ok: true, minigames: db.prepare("SELECT id, slug, title, subtitle, price, image, example FROM minigames WHERE deleted = 0 ORDER BY id").all() });
 });
-
 app.get("/api/minigames/:id", (req, res) => {
-  const g = db.prepare("SELECT * FROM minigames WHERE (id = ? OR slug = ?) AND deleted = 0").get(req.params.id, req.params.id);
+  const g = db.prepare("SELECT id, slug, title, subtitle, price, image, example FROM minigames WHERE (id = ? OR slug = ?) AND deleted = 0").get(req.params.id, req.params.id);
   if (!g) return res.status(404).json({ ok: false, message: "ไม่พบมินิเกม" });
   const prizes = db.prepare("SELECT id, label, weight FROM minigame_prizes WHERE minigame_id = ?").all(g.id);
   res.json({ ok: true, minigame: g, prizes });
 });
-
-app.post("/api/minigames/:id/play", requireAuth, (req, res) => {
-  const key = req.params.id;
+app.post("/api/minigames/:id/play", requireAuth, requireVerified, buyLimiter, (req, res) => {
+  const key = String(req.params.id);
   try {
     const out = db.transaction(() => {
       const g = db.prepare("SELECT * FROM minigames WHERE (id = ? OR slug = ?) AND deleted = 0").get(key, key);
-      if (!g) throw Object.assign(new Error("ไม่พบมินิเกม"), { status: 404 });
-      const user = getUserById(req.session.userId);
-      if (user.balance < g.price) {
-        throw Object.assign(new Error(`เครดิตไม่พอ (ต้องการ ${g.price.toFixed(2)} บาท)`), { status: 400, code: "INSUFFICIENT" });
-      }
+      if (!g) throw fail(404, "NOT_FOUND", "ไม่พบมินิเกม");
       const prizes = db.prepare("SELECT * FROM minigame_prizes WHERE minigame_id = ?").all(g.id);
-      if (!prizes.length) throw Object.assign(new Error("ยังไม่มีรางวัลในพูล"), { status: 500 });
-      const total = prizes.reduce((s, p) => s + p.weight, 0);
-      let r = Math.random() * total;
+      if (!prizes.length) throw fail(400, "NO_PRIZES", "ยังไม่มีรางวัลในพูล");
+      const total = prizes.reduce((s, p) => s + Math.max(0, p.weight), 0);
+      let r = crypto.randomInt(0, Math.max(1, total));
       let picked = prizes[prizes.length - 1];
-      for (const p of prizes) {
-        r -= p.weight;
-        if (r <= 0) { picked = p; break; }
-      }
-      const bal = db.prepare("UPDATE users SET balance = balance - ? WHERE id = ? AND balance >= ?").run(g.price, user.id, g.price);
-      if (bal.changes !== 1) throw Object.assign(new Error("เครดิตไม่พอ"), { status: 400, code: "INSUFFICIENT" });
-      db.prepare("INSERT INTO minigame_plays (user_id, minigame_id, prize_label, price) VALUES (?, ?, ?, ?)")
-        .run(user.id, g.id, picked.label, g.price);
-      db.prepare(`INSERT INTO transactions (user_id, type, amount, status, message) VALUES (?, 'minigame', ?, 'success', ?)`)
-        .run(user.id, -g.price, `เล่นมินิเกม ${g.title}: ${picked.label}`);
-      return {
-        prize: picked.label,
-        minigame: g,
-        user: publicUser(getUserById(user.id)),
-      };
+      for (const p of prizes) { r -= Math.max(0, p.weight); if (r < 0) { picked = p; break; } }
+      const playId = db.prepare("INSERT INTO minigame_plays (user_id, minigame_id, prize_label, price) VALUES (?, ?, ?, ?)").run(req.user.id, g.id, picked.label, g.price).lastInsertRowid;
+      applyBalance(req.user.id, -g.price, { reason: "minigame", ref: `play:${playId}` });
+      db.prepare(`INSERT INTO transactions (user_id, type, amount, status, message) VALUES (?, 'minigame', ?, 'success', ?)`).run(req.user.id, -g.price, `เล่นมินิเกม ${g.title}: ${picked.label}`);
+      return { prize: picked.label, minigame: { id: g.id, title: g.title, price: g.price } };
     })();
-    res.json({ ok: true, message: "สุ่มรางวัลสำเร็จ", ...out });
+    res.json({ ok: true, message: "สุ่มรางวัลสำเร็จ", ...out, user: publicUser(getUserById(req.user.id)) });
   } catch (e) {
-    res.status(e.status || 500).json({ ok: false, error: e.code || "PLAY_FAILED", message: e.message || "เล่นไม่สำเร็จ" });
+    res.status(e.status || 500).json({ ok: false, error: e.code || "PLAY_FAILED", message: e.status ? e.message : "เล่นไม่สำเร็จ" });
   }
-});
-
-app.get("/api/minigame-plays", requireAuth, (req, res) => {
-  const rows = db.prepare(`
-    SELECT p.id, p.prize_label, p.price, p.created_at, m.title AS minigame_title
-    FROM minigame_plays p JOIN minigames m ON m.id = p.minigame_id
-    WHERE p.user_id = ? ORDER BY p.id DESC LIMIT 30
-  `).all(req.session.userId);
-  res.json({ ok: true, plays: rows });
 });
 
 app.use("/api/admin", createAdminRouter());
+app.use("/api", (_req, res) => res.status(404).json({ ok: false, message: "ไม่พบ API" }));
 
-// Uploads may live outside public/ when UPLOAD_DIR is set (e.g. Render disk)
-app.use("/uploads", express.static(UPLOAD_DIR, { fallthrough: true, index: false }));
-app.use(express.static(path.join(__dirname, "public")));
-app.get("/{*path}", (req, res, next) => {
-  if (req.path.startsWith("/api/")) return next();
-  res.sendFile(path.join(__dirname, "public", "index.html"));
+/* —— Images —— */
+app.get("/img/u/:id", serveImage);
+app.get("/img/cover.jpg", (req, res, next) => {
+  const m = String(getSetting("cover_image", "")).match(/^\/img\/u\/([a-f0-9]{32})$/);
+  if (!m) return next();
+  req.params.id = m[1];
+  serveImage(req, res);
 });
+if (process.env.UPLOAD_DIR) app.use("/uploads", express.static(path.resolve(process.env.UPLOAD_DIR), { index: false, dotfiles: "deny" }));
+app.use(express.static(path.join(__dirname, "public"), { dotfiles: "deny", index: "index.html" }));
+app.get("/{*path}", (_req, res) => res.sendFile(path.join(__dirname, "public", "index.html")));
 
+// Never leak stack traces or internal messages
 app.use((err, _req, res, _next) => {
-  if (err && err.code === "LIMIT_FILE_SIZE") {
-    return res.status(413).json({ ok: false, message: "ไฟล์ใหญ่เกินไป (สูงสุด 5MB)" });
-  }
-  if (err && err.message && /อนุญาตเฉพาะ|ไม่อนุญาต|ไฟล์รูป/.test(err.message)) {
-    return res.status(400).json({ ok: false, message: err.message });
-  }
+  if (err && err.type === "entity.too.large") return res.status(413).json({ ok: false, message: "ข้อมูลใหญ่เกินไป" });
+  if (err && err.type === "entity.parse.failed") return res.status(400).json({ ok: false, message: "รูปแบบข้อมูลไม่ถูกต้อง" });
+  if (err && err.expose) return res.status(err.status || 400).json({ ok: false, message: err.message });
   console.error("[error]", err && err.message ? err.message : err);
   res.status(500).json({ ok: false, message: "เกิดข้อผิดพลาดภายในระบบ" });
 });
 
-app.listen(PORT, "0.0.0.0", () => {
-  console.log(`[startup] HAHA SHOP listening on 0.0.0.0:${PORT}`);
-});
+if (require.main === module) {
+  app.listen(PORT, "0.0.0.0", () => console.log(`[startup] HAHA SHOP listening on 0.0.0.0:${PORT}`));
+}
+module.exports = app;

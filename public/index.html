@@ -36,12 +36,10 @@
       </div>
     </a>
     <div class="topbar-right">
-      <div class="balance-pill" id="balance-pill" hidden>
-        <span data-i18n="credit">เครดิต</span>
-        <strong id="balance-value">฿0</strong>
-      </div>
+      <span id="balance-value" hidden></span>
       <button type="button" class="lang-pill" id="lang-toggle" aria-label="Language"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg><span id="lang-label">ไทย</span></button>
       <a class="btn-contact" id="contact-btn" href="#" target="_blank" rel="noopener">ติดต่อแอดมิน</a>
+      <button type="button" class="avatar-btn" id="avatar-btn" hidden aria-haspopup="menu" aria-label="Profile"><span class="avatar" id="avatar-top"></span></button>
     </div>
   </header>
 
@@ -165,7 +163,7 @@
       <div class="info-card">
         <h4 data-i18n="tm_title">ซองอั่งเปา TrueMoney</h4>
         <p class="muted">วางลิงก์ เช่น <code>https://gift.truemoney.com/campaign/?v=...</code></p>
-        <p class="muted" id="topup-need-login">ต้องเข้าสู่ระบบก่อนเติมเครดิต — <a href="#/auth">ไปหน้าเข้าสู่ระบบ</a></p>
+        <p class="muted" id="topup-need-login">ต้องเข้าสู่ระบบก่อนเติมเครดิต — <a href="#/auth" data-open-auth="login">เข้าสู่ระบบ / สมัครสมาชิก</a></p>
         <form id="topup-form" class="form" hidden>
           <label>ลิงก์ซองอั่งเปา
             <input name="link" id="topup-link" type="url" required placeholder="https://gift.truemoney.com/campaign/?v=XXXX" />
@@ -209,38 +207,19 @@
     </div>
   </main>
 
-  <!-- FORGOT PASSWORD -->
-  <main class="page-view" id="view-forgot" data-view="forgot" hidden>
+  <!-- HISTORY -->
+  <main class="page-view" id="view-history" data-view="history" hidden>
     <div class="page-pad">
-      <nav class="crumb"><a href="#/auth" data-i18n="back_login">← กลับไปหน้าเข้าสู่ระบบ</a></nav>
-      <h1 class="page-title"><span class="t" data-i18n="forgot_title">ลืมรหัสผ่าน</span> <span>RESET</span></h1>
-      <div class="info-card">
-        <p class="muted" data-i18n="forgot_desc">กรอกอีเมลที่ใช้สมัคร เราจะส่งลิงก์ตั้งรหัสผ่านใหม่ให้ (ลิงก์หมดอายุใน 30 นาที)</p>
-        <p class="notice-warn" id="forgot-off" hidden data-i18n="forgot_off">ตอนนี้ยังรีเซ็ตรหัสผ่านทางอีเมลไม่ได้ กรุณาติดต่อแอดมินเพื่อให้ตั้งรหัสผ่านใหม่ให้</p>
-        <form id="forgot-form" class="form">
-          <label><span data-i18n="email">อีเมล</span><input name="email" type="email" required maxlength="254" autocomplete="email" autocapitalize="none" placeholder="you@mail.com" /></label>
-          <p class="form-error" id="forgot-error" hidden></p>
-          <p class="ok" id="forgot-ok" hidden></p>
-          <button class="btn-primary" type="submit" data-i18n="forgot_send">ส่งลิงก์ตั้งรหัสผ่านใหม่</button>
-        </form>
-      </div>
+      <h1 class="page-title"><span class="t" data-i18n="history">ประวัติ</span> <span>HISTORY</span></h1>
+      <div class="info-card"><div id="history-list" class="tx-list"></div></div>
     </div>
   </main>
 
-  <!-- RESET PASSWORD -->
-  <main class="page-view" id="view-reset" data-view="reset" hidden>
+  <!-- ORDERS -->
+  <main class="page-view" id="view-orders" data-view="orders" hidden>
     <div class="page-pad">
-      <nav class="crumb"><a href="#/auth" data-i18n="back_login">← กลับไปหน้าเข้าสู่ระบบ</a></nav>
-      <h1 class="page-title"><span class="t" data-i18n="reset_title">ตั้งรหัสผ่านใหม่</span> <span>NEW PASSWORD</span></h1>
-      <div class="info-card">
-        <form id="reset-form" class="form">
-          <label><span data-i18n="new_password">รหัสผ่านใหม่</span><input name="password" type="password" required minlength="6" maxlength="72" autocomplete="new-password" placeholder="6+" /></label>
-          <label><span data-i18n="password2">ยืนยันรหัสผ่าน</span><input name="password2" type="password" required minlength="6" maxlength="72" autocomplete="new-password" /></label>
-          <p class="form-error" id="reset-error" hidden></p>
-          <p class="ok" id="reset-ok" hidden></p>
-          <button class="btn-primary" type="submit" data-i18n="reset_save">บันทึกรหัสผ่านใหม่</button>
-        </form>
-      </div>
+      <h1 class="page-title"><span class="t" data-i18n="purchased">สินค้าที่ซื้อ</span> <span>ORDERS</span></h1>
+      <div class="info-card"><div id="orders-list" class="tx-list"></div></div>
     </div>
   </main>
 
@@ -248,78 +227,30 @@
   <main class="page-view" id="view-auth" data-view="auth" hidden>
     <div class="page-pad">
       <nav class="crumb">หน้าแรก &gt; บัญชี</nav>
-      <h1 class="page-title" id="auth-page-title">เข้าสู่ระบบ <span>LOGIN</span></h1>
-
-      <div id="auth-guest">
-        <div class="auth-hero"><div class="ghost-wrap small"><div class="ghost-halo"></div>
-        <svg class="ghost-svg" viewBox="0 0 200 200" role="img" aria-label="HAHA ghost">
-          <defs>
-            <radialGradient id="gh-body2" cx="45%" cy="35%" r="70%"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#dfe3ea"/></radialGradient>
-          </defs>
-          <path class="ghost-body" fill="url(#gh-body2)" d="M100 18c-40 0-66 30-66 70v74c0 6 6 9 11 5l11-9c3-3 8-3 11 0l9 8c3 3 8 3 11 0l9-8c3-3 8-3 11 0l9 8c3 3 8 3 11 0l9-8c3-3 8-3 11 0l11 9c5 4 11 1 11-5V88c0-40-26-70-66-70Z"/>
-          <path d="M36 92c-14 2-22 12-20 20 7-2 14-6 20-12z" fill="#eef1f5"/>
-          <path d="M164 92c14 2 22 12 20 20-7-2-14-6-20-12z" fill="#eef1f5"/>
-          <path d="M64 78q10-12 20 0" fill="none" stroke="#0a0a0c" stroke-width="7" stroke-linecap="round"/>
-          <path d="M116 78q10-12 20 0" fill="none" stroke="#0a0a0c" stroke-width="7" stroke-linecap="round"/>
-          <path d="M138 86c4 6 6 11 3 14-3 3-8 0-7-5z" fill="#7dd3fc" opacity=".9"/>
-          <ellipse cx="62" cy="98" rx="9" ry="5" fill="#fda4af" opacity=".55"/>
-          <ellipse cx="138" cy="98" rx="9" ry="5" fill="#fda4af" opacity=".55"/>
-          <path d="M72 100h56c0 22-12 36-28 36s-28-14-28-36Z" fill="#0a0a0c"/>
-          <path d="M80 100h40v6c0 3-2 4-4 4H84c-2 0-4-1-4-4z" fill="#fff"/>
-          <path d="M88 126c6-6 18-6 24 0-4 6-8 9-12 9s-8-3-12-9Z" fill="#fb7185"/>
-          <path d="M150 40l6-10M160 52l11-4M44 40l-6-10" stroke="#fff" stroke-width="4" stroke-linecap="round" opacity=".6"/>
-        </svg>
-        </div><div class="wordmark sm">HAHA SHOP</div><p class="tagline" data-i18n="auth_tag">เข้าสู่ระบบเพื่อซื้อไอดีและเติมเครดิต</p></div>
-        <div class="auth-tabs">
-          <button type="button" class="auth-tab active" data-auth-tab="login" data-i18n="login">เข้าสู่ระบบ</button>
-          <button type="button" class="auth-tab" data-auth-tab="signup" data-i18n="signup">สมัครสมาชิก</button>
-        </div>
-        <div id="auth-login" class="info-card">
-          <form id="login-form" class="form">
-            <label><span data-i18n="identifier">ชื่อผู้ใช้หรืออีเมล</span><input name="identifier" required minlength="3" maxlength="254" autocomplete="username" autocapitalize="none" placeholder="username / you@mail.com" /></label>
-            <label><span data-i18n="password">รหัสผ่าน</span><input name="password" type="password" required minlength="6" autocomplete="current-password" placeholder="••••••" /></label>
-            <div class="row-end"><a class="link-sm" href="#/forgot" data-i18n="forgot_link">ลืมรหัสผ่าน?</a></div>
-            <p class="form-error" id="login-error" hidden></p>
-            <button class="btn-primary" type="submit" data-i18n="login">เข้าสู่ระบบ</button>
-          </form>
-          <div class="oauth-block" data-oauth hidden>
-            <div class="or-sep"><span data-i18n="or">หรือ</span></div>
-            <a class="btn-discord" href="/auth/discord"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M20.3 4.4A19.6 19.6 0 0 0 15.4 3l-.6 1.3a18.2 18.2 0 0 0-5.6 0L8.6 3a19.5 19.5 0 0 0-4.9 1.5C.6 9.1-.3 13.6.1 18.1a19.8 19.8 0 0 0 6 3l1.3-2.1a12.8 12.8 0 0 1-2-1l.5-.4a14 14 0 0 0 12.2 0l.5.4a12.7 12.7 0 0 1-2 1l1.3 2.1a19.7 19.7 0 0 0 6-3c.5-5.2-.9-9.7-3.6-13.7ZM8 15.3c-1.2 0-2.2-1.1-2.2-2.4S6.8 10.5 8 10.5s2.2 1.1 2.2 2.4-1 2.4-2.2 2.4Zm8 0c-1.2 0-2.2-1.1-2.2-2.4s1-2.4 2.2-2.4 2.2 1.1 2.2 2.4-1 2.4-2.2 2.4Z"/></svg><span data-i18n="discord_login">เข้าสู่ระบบด้วย Discord</span></a>
-          </div>
-          <p class="helper" data-i18n="helper_login">ยังไม่มีบัญชี? กดแท็บ “สมัครสมาชิก” ด้านบน</p>
-        </div>
-        <div id="auth-signup" class="info-card" hidden>
-          <form id="signup-form" class="form">
-            <label><span data-i18n="username">ชื่อผู้ใช้</span><input name="username" required minlength="3" maxlength="24" pattern="[A-Za-z0-9_]{3,24}" placeholder="a-z 0-9 _" autocapitalize="none" autocomplete="username" /></label>
-            <label><span data-i18n="email">อีเมล</span><input name="email" type="email" required maxlength="254" autocomplete="email" autocapitalize="none" placeholder="you@mail.com" /></label>
-            <label><span data-i18n="password">รหัสผ่าน</span><input name="password" type="password" required minlength="6" autocomplete="new-password" placeholder="6+" /></label>
-            <label><span data-i18n="password2">ยืนยันรหัสผ่าน</span><input name="password2" type="password" required minlength="6" autocomplete="new-password" /></label>
-            <p class="form-error" id="signup-error" hidden></p>
-            <button class="btn-primary" type="submit" data-i18n="signup">สมัครสมาชิก</button>
-          </form>
-          <div class="oauth-block" data-oauth hidden>
-            <div class="or-sep"><span data-i18n="or">หรือ</span></div>
-            <a class="btn-discord" href="/auth/discord"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M20.3 4.4A19.6 19.6 0 0 0 15.4 3l-.6 1.3a18.2 18.2 0 0 0-5.6 0L8.6 3a19.5 19.5 0 0 0-4.9 1.5C.6 9.1-.3 13.6.1 18.1a19.8 19.8 0 0 0 6 3l1.3-2.1a12.8 12.8 0 0 1-2-1l.5-.4a14 14 0 0 0 12.2 0l.5.4a12.7 12.7 0 0 1-2 1l1.3 2.1a19.7 19.7 0 0 0 6-3c.5-5.2-.9-9.7-3.6-13.7ZM8 15.3c-1.2 0-2.2-1.1-2.2-2.4S6.8 10.5 8 10.5s2.2 1.1 2.2 2.4-1 2.4-2.2 2.4Zm8 0c-1.2 0-2.2-1.1-2.2-2.4s1-2.4 2.2-2.4 2.2 1.1 2.2 2.4-1 2.4-2.2 2.4Z"/></svg><span data-i18n="discord_signup">สมัครด้วย Discord</span></a>
-          </div>
-        </div>
-      </div>
+      <h1 class="page-title" id="auth-page-title"><span class="t" data-i18n="manage_profile">จัดการโปรไฟล์</span> <span>PROFILE</span></h1>
+      <div class="info-card" id="auth-guest-note" hidden><p class="muted" data-i18n="please_login">กรุณาเข้าสู่ระบบก่อน</p><button class="btn-primary" type="button" data-open-auth="login" data-i18n="login">เข้าสู่ระบบ</button></div>
 
       <div id="auth-profile" hidden>
-        <div class="info-card">
-          <h3 id="profile-username"></h3>
-          <p class="muted mono" id="profile-email"></p>
-          <p class="detail-price" id="profile-balance">฿0</p>
+        <div class="verify-banner" id="verify-banner" hidden>
+          <p data-i18n="verify_needed">กรุณายืนยันอีเมลก่อนเติมเงินหรือซื้อสินค้า</p>
+          <button type="button" class="inline-btn" id="resend-verify" data-i18n="resend_verify">ส่งลิงก์ยืนยันอีกครั้ง</button>
+        </div>
+        <div class="info-card profile-card">
+          <div class="profile-head"><span class="avatar lg" id="avatar-profile"></span><div><h3 id="profile-username"></h3>
+          <p class="muted mono" id="profile-email"></p></div></div>
+          <div class="wallet-row"><div><small data-i18n="balance_left">ยอดเงินคงเหลือ</small><strong class="yellow" id="profile-balance">฿0</strong></div><div><small data-i18n="points_left">แต้มสะสมคงเหลือ</small><strong id="profile-points">0</strong></div></div>
           <a class="btn-primary" href="#/topup" style="display:block;text-align:center;text-decoration:none;margin-bottom:8px" data-i18n="topup">เติมเครดิต</a>
           <a class="btn-primary" id="admin-entry" href="#/admin" hidden style="display:none;text-align:center;text-decoration:none;margin-bottom:8px;background:#facc15;color:#000">หลังบ้าน</a>
-          <button class="btn-ghost" id="logout-btn" type="button" data-i18n="logout">ออกจากระบบ</button>
+          <button class="btn-ghost" type="button" data-logout data-i18n="logout">ออกจากระบบ</button>
         </div>
         <div class="info-card" style="margin-top:12px">
-          <h4>ประวัติการซื้อ</h4>
-          <div id="purchase-history" class="tx-list"></div>
-        </div>
-        <div class="info-card" style="margin-top:12px">
-          <h4>ประวัติเติมเครดิต</h4>
-          <div id="profile-topup-history" class="tx-list"></div>
+          <h4 data-i18n="change_password">เปลี่ยนรหัสผ่าน</h4>
+          <form id="change-pw-form" class="form">
+            <label><span data-i18n="current_password">รหัสผ่านปัจจุบัน</span><input name="current" type="password" required autocomplete="current-password" /></label>
+            <label><span data-i18n="new_password">รหัสผ่านใหม่</span><input name="password" type="password" required minlength="8" maxlength="72" autocomplete="new-password" placeholder="8+" /></label>
+            <p class="form-error" id="change-pw-error" hidden></p>
+            <button class="btn-primary" type="submit" data-i18n="save">บันทึก</button>
+          </form>
         </div>
       </div>
     </div>
@@ -332,7 +263,8 @@
     <a class="nav-item" data-tab="shop" href="#/shop"><span class="nav-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m2 7 4.41-4.41A2 2 0 0 1 7.83 2h8.34a2 2 0 0 1 1.42.59L22 7"/><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><path d="M15 22v-4a2 2 0 0 0-2-2h-2a2 2 0 0 0-2 2v4"/><path d="M2 7h20"/></svg></span><span data-i18n="shop">ร้านค้า</span></a>
     <a class="nav-item" data-tab="auction" href="#/auction"><span class="nav-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m14 13-8.381 8.38a1 1 0 0 1-3.001-3l8.384-8.381"/><path d="m16 16 6-6"/><path d="m8 8 6-6"/><path d="m9 7 8 8"/><path d="m21 11-8-8"/></svg></span><span data-i18n="auction">ประมูล</span></a>
     <a class="nav-item" data-tab="minigame" href="#/minigame"><span class="nav-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 12h4"/><path d="M8 10v4"/><path d="M15 13h.01"/><path d="M18 11h.01"/><rect width="20" height="12" x="2" y="6" rx="2"/></svg></span><span data-i18n="minigame_s">มินิเกม</span></a>
-    <a class="nav-item" data-tab="auth" href="#/auth"><span class="nav-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span><span id="nav-auth-label">เข้าสู่ระบบ</span></a>
+    <a class="nav-item" data-tab="auth" id="nav-login" href="#/auth" data-open-auth="login"><span class="nav-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span><span id="nav-auth-label" data-i18n="login">เข้าสู่ระบบ</span></a>
+    <button type="button" class="nav-wallet" id="nav-wallet" hidden aria-haspopup="menu"><strong id="nav-balance">฿0</strong><small id="nav-points">0 pts</small></button>
   </nav>
 
   
@@ -353,15 +285,17 @@
           <button type="button" class="admin-tab" data-admin-tab="settings">ตั้งค่า</button>
           <button type="button" class="admin-tab" data-admin-tab="users">สมาชิก</button>
           <button type="button" class="admin-tab" data-admin-tab="orders">ออเดอร์</button>
+          <button type="button" class="admin-tab" data-admin-tab="ledger">บัญชีเงิน</button>
         </div>
         <div id="atab-dash" class="admin-section info-card"></div>
         <div id="atab-cover" class="admin-section info-card" hidden>
           <h4>เปลี่ยนรูปปกหน้าแรก</h4>
-          <img id="admin-cover-preview" src="/img/cover.jpg" alt="cover" style="width:100%;border-radius:12px;margin:8px 0" />
+          <img id="admin-cover-preview" src="/img/cover.jpg" alt="cover" style="width:100%;margin:8px 0" />
           <form id="admin-cover-form" class="form">
-            <label>อัปโหลดรูปใหม่ (jpg/png/webp ≤5MB)
-              <input type="file" name="image" accept="image/jpeg,image/png,image/webp" required />
+            <label>อัปโหลดรูปใหม่ (jpg / png / webp / gif — รูปจาก iPhone แปลงให้อัตโนมัติ)
+              <input type="file" name="image" accept="image/*" data-image-input />
             </label>
+            <label>หรือวางลิงก์รูป (https://)<input name="image_url" type="url" placeholder="https://..." /></label>
             <button class="btn-primary" type="submit">บันทึกรูปปก</button>
           </form>
         </div>
@@ -377,15 +311,135 @@
             <label>ลิงก์ติดต่อ (LINE/Facebook URL)<input name="contact_url" type="url" /></label>
             <button class="btn-primary" type="submit">บันทึก</button>
           </form>
+          <h4 style="margin-top:18px">ทดสอบอีเมล (SMTP)</h4>
+          <form id="admin-mail-test" class="form">
+            <label>ส่งอีเมลทดสอบไปที่<input name="to" type="email" required placeholder="you@gmail.com" /></label>
+            <button class="btn-ghost" type="submit">ส่งอีเมลทดสอบ</button>
+          </form>
+          <h4 style="margin-top:18px">สถานะระบบ</h4>
+          <pre class="diag mono" id="admin-diag">—</pre>
         </div>
         <div id="atab-users" class="admin-section" hidden></div>
         <div id="atab-orders" class="admin-section" hidden></div>
+        <div id="atab-ledger" class="admin-section" hidden></div>
       </div>
     </div>
   </main>
 
+  <!-- AUTH MODAL -->
+  <div class="hh-modal" id="auth-modal" hidden role="dialog" aria-modal="true" aria-labelledby="auth-modal-title">
+    <div class="hh-modal-box">
+      <button type="button" class="hh-close" data-close-modal aria-label="ปิด"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+      <div class="modal-tabs" id="auth-modal-title">
+        <button type="button" class="modal-tab active" data-mtab="login" data-i18n="login">เข้าสู่ระบบ</button>
+        <button type="button" class="modal-tab" data-mtab="signup" data-i18n="signup">สมัครสมาชิก</button>
+      </div>
+
+      <section class="mpane" data-pane="login">
+        <form id="login-form" class="form" novalidate>
+          <label><span data-i18n="identifier">อีเมล หรือ ชื่อผู้ใช้</span><input name="identifier" required maxlength="254" autocomplete="username" autocapitalize="none" placeholder="you@mail.com" /></label>
+          <label><span data-i18n="password">รหัสผ่าน</span><input name="password" type="password" required maxlength="72" autocomplete="current-password" placeholder="••••••••" /></label>
+          <div class="captcha" data-captcha></div>
+          <p class="form-error" id="login-error" hidden></p>
+          <button class="btn-primary" type="submit" data-i18n="login">เข้าสู่ระบบ</button>
+          <div class="row-center"><button type="button" class="link-sm" data-goto-pane="forgot" data-i18n="forgot_link">ลืมรหัสผ่าน?</button></div>
+        </form>
+        <div class="or-sep" data-oauth hidden><span data-i18n="or_with">หรือเข้าสู่ระบบด้วย</span></div>
+        <div class="oauth-row" data-oauth hidden>
+              <a class="btn-oauth google" data-oauth-google href="/auth/google"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#EA4335" d="M12 10.2v3.9h5.5c-.2 1.3-1.6 3.8-5.5 3.8-3.3 0-6-2.7-6-6.1s2.7-6.1 6-6.1c1.9 0 3.1.8 3.8 1.5l2.6-2.5C16.8 3.2 14.6 2.2 12 2.2 6.6 2.2 2.2 6.6 2.2 12s4.4 9.8 9.8 9.8c5.7 0 9.4-4 9.4-9.6 0-.6-.1-1.1-.2-1.6H12z"/></svg><span>Google</span></a>
+              <a class="btn-oauth discord" data-oauth-discord href="/auth/discord"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M20.3 4.4A19.6 19.6 0 0 0 15.4 3l-.6 1.3a18.2 18.2 0 0 0-5.6 0L8.6 3a19.5 19.5 0 0 0-4.9 1.5C.6 9.1-.3 13.6.1 18.1a19.8 19.8 0 0 0 6 3l1.3-2.1a12.8 12.8 0 0 1-2-1l.5-.4a14 14 0 0 0 12.2 0l.5.4a12.7 12.7 0 0 1-2 1l1.3 2.1a19.7 19.7 0 0 0 6-3c.5-5.2-.9-9.7-3.6-13.7ZM8 15.3c-1.2 0-2.2-1.1-2.2-2.4S6.8 10.5 8 10.5s2.2 1.1 2.2 2.4-1 2.4-2.2 2.4Zm8 0c-1.2 0-2.2-1.1-2.2-2.4s1-2.4 2.2-2.4 2.2 1.1 2.2 2.4-1 2.4-2.2 2.4Z"/></svg><span>Discord</span></a>
+            </div>
+      </section>
+
+      <section class="mpane" data-pane="signup" hidden>
+        <form id="signup-form" class="form" novalidate>
+          <label><span data-i18n="username">ชื่อผู้ใช้</span><input name="username" required minlength="3" maxlength="24" pattern="[A-Za-z0-9_]{3,24}" placeholder="a-z 0-9 _" autocapitalize="none" autocomplete="username" /></label>
+          <label><span data-i18n="email">อีเมล</span><input name="email" type="email" required maxlength="254" autocomplete="email" autocapitalize="none" placeholder="you@mail.com" /></label>
+          <label><span data-i18n="password">รหัสผ่าน</span><input name="password" type="password" required minlength="8" maxlength="72" autocomplete="new-password" placeholder="8+" /></label>
+          <div class="terms-box" tabindex="0" aria-label="Terms">
+            <strong data-i18n="terms_title">เงื่อนไขการใช้งาน</strong>
+            <ol>
+              <li>ผู้ใช้ต้องให้ข้อมูลที่ถูกต้อง และรับผิดชอบการเก็บรักษารหัสผ่านของตนเอง</li>
+              <li>เครดิตในร้านใช้ซื้อสินค้าในร้านเท่านั้น ไม่สามารถแลกคืนเป็นเงินสดได้</li>
+              <li>ข้อมูลบัญชีที่ซื้อจะแสดงให้ผู้ซื้อเท่านั้น กรุณาเปลี่ยนรหัสผ่านทันทีหลังได้รับ</li>
+              <li>ห้ามพยายามเจาะระบบ ปลอมแปลงยอดเงิน หรือใช้ซองอั่งเปาที่ไม่ใช่ของตน บัญชีที่ทุจริตจะถูกระงับ</li>
+              <li>การซื้อขายบัญชีเกมอาจขัดกับข้อกำหนดของผู้ให้บริการเกม ผู้ซื้อยอมรับความเสี่ยงนี้เอง</li>
+              <li>ร้านเก็บข้อมูลเท่าที่จำเป็นต่อการให้บริการ และไม่เปิดเผยแก่บุคคลภายนอก</li>
+            </ol>
+          </div>
+          <label class="check"><input type="checkbox" name="terms" value="1" required /> <span data-i18n="accept_terms">ฉันได้อ่านและยอมรับเงื่อนไขการใช้งาน</span></label>
+          <div class="captcha" data-captcha></div>
+          <p class="form-error" id="signup-error" hidden></p>
+          <button class="btn-primary" type="submit" data-i18n="signup">สมัครสมาชิก</button>
+        </form>
+        <div class="or-sep" data-oauth hidden><span data-i18n="or_with_signup">หรือสมัครด้วย</span></div>
+        <div class="oauth-row" data-oauth hidden>
+              <a class="btn-oauth google" data-oauth-google href="/auth/google"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#EA4335" d="M12 10.2v3.9h5.5c-.2 1.3-1.6 3.8-5.5 3.8-3.3 0-6-2.7-6-6.1s2.7-6.1 6-6.1c1.9 0 3.1.8 3.8 1.5l2.6-2.5C16.8 3.2 14.6 2.2 12 2.2 6.6 2.2 2.2 6.6 2.2 12s4.4 9.8 9.8 9.8c5.7 0 9.4-4 9.4-9.6 0-.6-.1-1.1-.2-1.6H12z"/></svg><span>Google</span></a>
+              <a class="btn-oauth discord" data-oauth-discord href="/auth/discord"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M20.3 4.4A19.6 19.6 0 0 0 15.4 3l-.6 1.3a18.2 18.2 0 0 0-5.6 0L8.6 3a19.5 19.5 0 0 0-4.9 1.5C.6 9.1-.3 13.6.1 18.1a19.8 19.8 0 0 0 6 3l1.3-2.1a12.8 12.8 0 0 1-2-1l.5-.4a14 14 0 0 0 12.2 0l.5.4a12.7 12.7 0 0 1-2 1l1.3 2.1a19.7 19.7 0 0 0 6-3c.5-5.2-.9-9.7-3.6-13.7ZM8 15.3c-1.2 0-2.2-1.1-2.2-2.4S6.8 10.5 8 10.5s2.2 1.1 2.2 2.4-1 2.4-2.2 2.4Zm8 0c-1.2 0-2.2-1.1-2.2-2.4s1-2.4 2.2-2.4 2.2 1.1 2.2 2.4-1 2.4-2.2 2.4Z"/></svg><span>Discord</span></a>
+            </div>
+      </section>
+
+      <section class="mpane" data-pane="forgot" hidden>
+        <h3 class="pane-title" data-i18n="forgot_title">ลืมรหัสผ่าน</h3>
+        <p class="muted" data-i18n="forgot_desc">กรอกอีเมลที่ใช้สมัคร เราจะส่งลิงก์ตั้งรหัสผ่านใหม่ให้ (ลิงก์หมดอายุใน 30 นาที)</p>
+        <p class="notice-warn" id="forgot-off" hidden data-i18n="forgot_off">ตอนนี้ยังรีเซ็ตรหัสผ่านทางอีเมลไม่ได้ กรุณาติดต่อแอดมินเพื่อให้ตั้งรหัสผ่านใหม่ให้</p>
+        <form id="forgot-form" class="form" novalidate>
+          <label><span data-i18n="email">อีเมล</span><input name="email" type="email" required maxlength="254" autocomplete="email" autocapitalize="none" placeholder="you@mail.com" /></label>
+          <div class="captcha" data-captcha></div>
+          <p class="form-error" id="forgot-error" hidden></p>
+          <p class="ok" id="forgot-ok" hidden></p>
+          <button class="btn-primary" type="submit" data-i18n="forgot_send">ส่งลิงก์ตั้งรหัสผ่านใหม่</button>
+        </form>
+        <div class="row-center"><button type="button" class="link-sm" data-goto-pane="login" data-i18n="back_login">← กลับไปหน้าเข้าสู่ระบบ</button></div>
+      </section>
+
+      <section class="mpane" data-pane="reset" hidden>
+        <h3 class="pane-title" data-i18n="reset_title">ตั้งรหัสผ่านใหม่</h3>
+        <form id="reset-form" class="form" novalidate>
+          <label><span data-i18n="new_password">รหัสผ่านใหม่</span><input name="password" type="password" required minlength="8" maxlength="72" autocomplete="new-password" placeholder="8+" /></label>
+          <label><span data-i18n="password2">ยืนยันรหัสผ่าน</span><input name="password2" type="password" required minlength="8" maxlength="72" autocomplete="new-password" /></label>
+          <p class="form-error" id="reset-error" hidden></p>
+          <p class="ok" id="reset-ok" hidden></p>
+          <button class="btn-primary" type="submit" data-i18n="reset_save">บันทึกรหัสผ่านใหม่</button>
+        </form>
+      </section>
+
+      <section class="mpane" data-pane="message" hidden>
+        <div class="msg-icon" id="msg-icon"></div>
+        <p class="msg-text" id="msg-text"></p>
+        <button class="btn-primary" type="button" data-goto-pane="login" data-i18n="login">เข้าสู่ระบบ</button>
+      </section>
+    </div>
+  </div>
+
+  <!-- PROFILE MENU -->
+  <div class="profile-menu" id="profile-menu" hidden role="menu">
+    <div class="pm-head"><span class="avatar lg" id="avatar-menu"></span><div><strong id="pm-username"></strong><small class="mono" id="pm-email"></small></div></div>
+    <div class="pm-wallet">
+      <div><small data-i18n="balance_left">ยอดเงินคงเหลือ</small><strong class="yellow" id="pm-balance">฿0</strong></div>
+      <div><small data-i18n="points_left">แต้มสะสมคงเหลือ</small><strong id="pm-points">0</strong></div>
+    </div>
+    <a role="menuitem" href="#/history"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/><path d="M12 7v5l4 2"/></svg><span data-i18n="history">ประวัติ</span></a>
+    <a role="menuitem" href="#/orders"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg><span data-i18n="purchased">สินค้าที่ซื้อ</span></a>
+    <a role="menuitem" href="#/auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 12 0v1"/><path d="m19 14 1.5 1.5L23 13"/></svg><span data-i18n="manage_profile">จัดการโปรไฟล์</span></a>
+    <a role="menuitem" href="#/admin" id="pm-admin" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2 4 5v6c0 5 3.4 9.4 8 11 4.6-1.6 8-6 8-11V5Z"/></svg><span>หลังบ้าน</span></a>
+    <button type="button" role="menuitem" class="pm-logout" id="logout-btn" data-logout><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg><span data-i18n="logout">ออกจากระบบ</span></button>
+  </div>
+
+  <!-- PURCHASED ACCOUNT DIALOG -->
+  <div class="hh-modal" id="secret-modal" hidden role="dialog" aria-modal="true">
+    <div class="hh-modal-box">
+      <button type="button" class="hh-close" data-close-modal aria-label="ปิด"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+      <h3 class="pane-title" id="secret-title"></h3>
+      <p class="muted" data-i18n="secret_hint">ข้อมูลนี้แสดงให้คุณคนเดียว กรุณาเปลี่ยนรหัสผ่านทันที</p>
+      <pre class="secret-box mono" id="secret-body"></pre>
+      <button class="btn-primary" type="button" id="secret-copy" data-i18n="copy">คัดลอก</button>
+    </div>
+  </div>
+
   <div class="toast" id="toast" hidden></div>
   <script src="/i18n.js"></script>
+  <script src="/image-prep.js"></script>
   <script src="/script.js"></script>
 </body>
 </html>
