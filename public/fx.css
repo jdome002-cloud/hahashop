@@ -5,14 +5,6 @@
 .info-card, .stat-card, .menu-card { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
 #fx-canvas { opacity: 1 !important; }
 
-/* —— Hazard stripes drift —— */
-.hazard-bar { background: var(--yellow) !important; }
-.hazard-bar::after {
-  content: ""; position: absolute; left: 0; bottom: 0; height: 6px; width: calc(100% + 46px);
-  background: repeating-linear-gradient(-45deg, #0a0a0a 0 8px, var(--yellow) 8px 16px);
-  pointer-events: none; will-change: transform;
-}
-
 /* —— Product cards: lift + inner glow, shine sweep, moving top-edge light —— */
 .cat-card { position: relative; isolation: isolate; transition: transform .28s cubic-bezier(.2,.8,.2,1), border-color .28s, box-shadow .28s; }
 .cat-card::before {
@@ -126,7 +118,6 @@
 
 /* —— Motion (only when the user allows it) —— */
 @media (prefers-reduced-motion: no-preference) {
-  .hazard-bar::after { animation: fxStripes 1.6s linear infinite; }
   .cat-card::before { animation: fxShine 7s ease-in-out infinite; animation-delay: var(--fx-d, 0s); }
   .cat-card::after { animation: fxEdge 7s ease-in-out infinite; animation-delay: var(--fx-d, 0s); }
   .cat-card:hover::before { animation-duration: 1.4s; }
@@ -139,7 +130,6 @@
   .fx-inview .cat-price, .stat-num { animation: fxPricePulse 2.8s ease-in-out infinite; }
   .stat-num { animation-duration: 3.6s; }
 }
-@keyframes fxStripes { to { transform: translateX(-22.627px); } }
 @keyframes fxShine { 0%, 62% { transform: translateX(-120%); } 82%, 100% { transform: translateX(120%); } }
 @keyframes fxEdge { 0%, 58% { transform: translateX(-100%); opacity: 0; } 64% { opacity: 1; } 84% { opacity: 1; } 92%, 100% { transform: translateX(240%); opacity: 0; } }
 @keyframes fxSpin { to { transform: translate(-50%, -50%) rotate(360deg); } }

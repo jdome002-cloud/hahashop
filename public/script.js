@@ -113,16 +113,25 @@
 
   function updateChrome() {
     const u = currentUser;
+    // side drawer user block
+    document.getElementById("du-guest").hidden = !!u;
+    document.getElementById("du-member").hidden = !u;
+    document.querySelectorAll("#side-drawer [data-member]").forEach((el) => { el.hidden = !u; });
+    document.querySelectorAll("#side-drawer [data-admin]").forEach((el) => { el.hidden = !(u && u.isAdmin); });
+    if (u) {
+      document.getElementById("du-avatar").innerHTML = avatarHtml(u);
+      document.getElementById("du-name").textContent = u.username;
+      document.getElementById("du-email").textContent = u.email || (u.discord ? "Discord" : u.google ? "Google" : "");
+      document.getElementById("du-balance").textContent = baht(u.balance);
+      document.getElementById("du-points").textContent = formatInt(u.points || 0) + " " + T("points_unit");
+    }
     document.body.classList.toggle("logged-in", !!u);
-    document.getElementById("avatar-btn").hidden = !u;
     document.getElementById("nav-login").hidden = !!u;
     document.getElementById("nav-wallet").hidden = !u;
     const banner = document.getElementById("verify-banner");
     if (u) {
-      document.getElementById("avatar-top").innerHTML = avatarHtml(u);
       document.getElementById("nav-balance").textContent = bahtShort(u.balance);
       document.getElementById("nav-points").textContent = formatInt(u.points || 0) + " " + T("points_unit");
-      document.getElementById("balance-value").textContent = bahtShort(u.balance);
       if (banner) banner.hidden = !!u.emailVerified || !authCfg.verificationRequired || !!u.isAdmin;
       if (!menu.hidden) fillMenu();
     } else {
@@ -596,7 +605,7 @@
     document.getElementById("pm-points").textContent = formatInt(currentUser.points || 0) + " " + T("points_unit");
     document.getElementById("pm-admin").hidden = !currentUser.isAdmin;
   }
-  ["avatar-btn", "nav-wallet"].forEach((id) => {
+  ["nav-wallet"].forEach((id) => {
     document.getElementById(id).addEventListener("click", (e) => {
       e.stopPropagation();
       if (!menu.hidden) closeMenu(); else openMenu(e.currentTarget);
@@ -816,11 +825,7 @@
     configCats = data.categories || [];
     if (data.auth) { authCfg = data.auth; applyAuthCfg(); }
     if (data.captcha) captchaCfg = data.captcha;
-    const track = document.getElementById("announce-track");
-    if (track && data.announcement) {
-      const t = escapeHtml(data.announcement) + " · ";
-      track.innerHTML = `<span>${t}</span><span>${t}</span>`;
-    }
+    if (window.HHHero && data.announcement) window.HHHero.setAnnouncement(data.announcement);
     const btn = document.getElementById("contact-btn");
     if (btn) {
       btn.textContent = data.contact_label || "ติดต่อแอดมิน";
@@ -1181,6 +1186,51 @@
 
 
   /* Lightweight particle field */
+  /* —— Search overlay (header) —— */
+  (function search() {
+    const ov = document.getElementById("search-overlay");
+    const input = document.getElementById("so-q");
+    const box = document.getElementById("so-results");
+    let t = 0, seq = 0;
+    function open() {
+      window.HHDrawer && window.HHDrawer.close();
+      ov.hidden = false; document.body.classList.add("modal-open");
+      requestAnimationFrame(() => ov.classList.add("show"));
+      input.value = prodState.q || ""; setTimeout(() => input.focus(), 40);
+      run();
+    }
+    function close() {
+      ov.classList.remove("show");
+      setTimeout(() => { ov.hidden = true; if (!document.querySelector(".hh-modal:not([hidden])")) document.body.classList.remove("modal-open"); }, 200);
+    }
+    async function run() {
+      const q = input.value.trim().slice(0, 80);
+      const my = ++seq;
+      const { data } = await api("/api/products?sort=newest" + (q ? "&q=" + encodeURIComponent(q) : ""));
+      if (my !== seq) return;
+      const list = (data.products || []).slice(0, 6);
+      box.innerHTML = list.length ? list.map((p) => `<button type="button" class="so-item" data-so-pick="${escapeHtml(p.title)}">
+          ${p.image ? `<img src="${escapeHtml(p.image)}" alt="" loading="lazy" />` : `<span class="so-ph">${escapeHtml((p.sku || "#").slice(0, 6))}</span>`}
+          <span class="so-t"><b>${escapeHtml(p.title)}</b><small>${escapeHtml(p.sku || "")}</small></span>
+          <span class="so-p">${escapeHtml(baht(p.price))}</span></button>`).join("")
+        : `<p class="muted so-empty">${escapeHtml(T("no_results"))}</p>`;
+    }
+    function go(q) {
+      prodState.q = String(q || "").trim().slice(0, 80); prodState._fromFilter = true;
+      close();
+      if (location.hash === "#/products") loadProducts(); else location.hash = "#/products";
+    }
+    document.getElementById("search-btn").addEventListener("click", open);
+    document.getElementById("so-close").addEventListener("click", close);
+    ov.addEventListener("click", (e) => {
+      if (e.target === ov) return close();
+      const it = e.target.closest("[data-so-pick]"); if (it) go(it.getAttribute("data-so-pick"));
+    });
+    input.addEventListener("input", () => { clearTimeout(t); t = setTimeout(run, 220); });
+    document.getElementById("so-form").addEventListener("submit", (e) => { e.preventDefault(); go(input.value); });
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !ov.hidden) close(); });
+  })();
+
   window.addEventListener("hashchange", route);
   ensureCsrf().then(() => refreshMe()).then(async () => { await loadSiteConfig(); route(); });
 })();

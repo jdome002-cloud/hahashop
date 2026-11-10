@@ -16,7 +16,6 @@
   --clip: polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px);
   --clip-sm: polygon(7px 0, 100% 0, 100% calc(100% - 7px), calc(100% - 7px) 100%, 0 100%, 0 7px);
   --mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
-  --hazard-h: 40px;
 }
 html, body { background: #030303; }
 
@@ -30,38 +29,12 @@ html, body { background: #030303; }
 }
 #fx-canvas { opacity: 0.35; }
 
-/* Yellow announcement bar with hazard stripe */
-.hazard-bar {
-  position: sticky; top: 0; z-index: 45;
-  display: flex; align-items: center; gap: 10px;
-  height: var(--hazard-h);
-  padding: 0 12px 6px;
-  background:
-    repeating-linear-gradient(-45deg, #0a0a0a 0 8px, var(--yellow) 8px 16px) bottom / 100% 6px no-repeat,
-    var(--yellow);
-  color: #111;
-  font-weight: 600; font-size: 13px;
-  overflow: hidden;
-}
-.hazard-ico { flex: 0 0 auto; width: 20px; height: 20px; display: grid; place-items: center; }
-.hazard-ico svg { width: 18px; height: 18px; }
-.hazard-bar .marquee-track { color: #111; font-size: 13px; font-weight: 600; }
-
 /* Top bar */
 .topbar {
-  top: var(--hazard-h);
+  top: 0;
   background: rgba(3, 3, 3, 0.82);
   border-bottom: 1px solid var(--border);
 }
-.brand-badge {
-  background: #fff; color: #fff; border-radius: 10px;
-  box-shadow: 0 0 16px rgba(255,255,255,0.35);
-  clip-path: var(--clip-sm);
-}
-.brand-badge svg { width: 24px; height: 24px; color: #fff; }
-.brand-badge { background: #111; border: 1px solid var(--border-strong); }
-.brand-text strong { letter-spacing: 2px; font-weight: 700; }
-
 .lang-pill {
   display: inline-flex; align-items: center; gap: 5px;
   background: #121214; border: 1px solid var(--border-strong);
@@ -69,13 +42,6 @@ html, body { background: #030303; }
   padding: 6px 10px; font-size: 12px; font-weight: 500; cursor: pointer;
 }
 .lang-pill svg { width: 14px; height: 14px; }
-.btn-contact, a.btn-contact {
-  background: #f4f4f5; color: #000; border-radius: 0; font-weight: 700;
-  clip-path: var(--clip-sm); box-shadow: none; padding: 8px 12px; font-size: 12px;
-}
-.balance-pill {
-  background: rgba(250, 204, 21, 0.10); border-color: rgba(250, 204, 21, 0.4); color: #fde68a;
-}
 
 input::placeholder, textarea::placeholder { color: #5f5f68; font-family: var(--mono); }
 .inline-btn {
@@ -181,11 +147,6 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: #6b6b73
 }
 .admin-stats .stat strong, .info-card h4 { color: #fff; }
 /* Top bar fit */
-.brand-text strong, .btn-contact, .lang-pill, .balance-pill { white-space: nowrap; }
-.topbar-right { gap: 6px; }
-@media (max-width: 440px) {
-  body.logged-in .brand-text { display: none; }
-}
 
 /* —— Auth v2: email, Discord, reset —— */
 .page-title span.t { color: inherit; font-size: inherit; font-weight: inherit; letter-spacing: inherit; margin: 0; }
@@ -274,7 +235,7 @@ body.modal-open { overflow: hidden; }
 .avatar.lg { width: 46px; height: 46px; font-size: 20px; }
 .avatar-btn { background: none; border: 0; padding: 0; cursor: pointer; display: grid; }
 .avatar-btn[hidden] { display: none; }
-.profile-menu { position: fixed; z-index: 150; top: calc(var(--hazard-h, 40px) + 62px); right: max(10px, calc(50% - 240px + 10px)); width: min(300px, calc(100% - 20px));
+.profile-menu { position: fixed; z-index: 150; top: calc(var(--top-h, 64px) + 8px); right: max(10px, calc(50% - 240px + 10px)); width: min(300px, calc(100% - 20px));
   background: #0e0e10; border: 1px solid var(--border-strong); clip-path: var(--clip); box-shadow: 0 24px 60px rgba(0,0,0,.65); padding: 14px; animation: hhPop .16s ease; }
 .profile-menu.from-bottom { top: auto; bottom: calc(var(--nav-h, 64px) + 12px); }
 .profile-menu[hidden] { display: none; }

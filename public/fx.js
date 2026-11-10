@@ -38,18 +38,20 @@
     }
     function draw(now) {
       ctx.clearRect(0, 0, w, h);
+      var light = document.documentElement.getAttribute("data-theme") === "light";
+      var ink = light ? "37,99,235" : "255,255,255";
       // drifting shapes
       for (var i = 0; i < shapes.length; i++) {
         var sh = shapes[i], t = now * sh.sp + sh.ph;
         var dx = Math.sin(t) * sh.amp, dy = Math.cos(t * .8) * sh.amp * .7, r = Math.sin(t * .6) * sh.rot;
         ctx.save(); ctx.translate(w / 2 + dx, h / 2 + dy); ctx.rotate(r); ctx.translate(-w / 2, -h / 2);
-        ctx.fillStyle = "rgba(255,255,255," + sh.a + ")";
+        ctx.fillStyle = "rgba(" + ink + "," + (light ? sh.a * .8 : sh.a) + ")";
         ctx.beginPath();
         for (var p = 0; p < sh.pts.length; p++) { var px = sh.pts[p][0] * w, py = sh.pts[p][1] * h; p ? ctx.lineTo(px, py) : ctx.moveTo(px, py); }
         ctx.closePath(); ctx.fill(); ctx.restore();
       }
       // particles
-      ctx.fillStyle = "#fff";
+      ctx.fillStyle = "rgb(" + ink + ")";
       for (var d = 0; d < dots.length; d++) {
         var o = dots[d];
         o.x += o.vx * 2; o.y += o.vy * 2;
@@ -64,7 +66,7 @@
         var a = Math.max(0, Math.sin(s.t));
         if (a < .02 && Math.random() < .02) { s.x = rnd(0, w); s.y = rnd(0, h); }
         ctx.globalAlpha = a * .55;
-        ctx.fillStyle = s.gold ? "#facc15" : "#ffffff";
+        ctx.fillStyle = s.gold ? (light ? "#d97706" : "#facc15") : (light ? "#7c3aed" : "#ffffff");
         star(s.x, s.y, s.s * (.6 + a * .4));
       }
       ctx.globalAlpha = 1;
