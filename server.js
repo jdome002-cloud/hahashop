@@ -77,6 +77,8 @@ app.use(
         "form-action": ["'self'"],
         "frame-ancestors": ["'none'"],
         "script-src-attr": ["'none'"],
+        "worker-src": ["'self'"],
+        "manifest-src": ["'self'"],
       },
     },
     crossOriginEmbedderPolicy: false,
@@ -392,7 +394,21 @@ app.get("/img/cover.jpg", (req, res, next) => {
   serveImage(req, res);
 });
 if (process.env.UPLOAD_DIR) app.use("/uploads", express.static(path.resolve(process.env.UPLOAD_DIR), { index: false, dotfiles: "deny" }));
-app.use(express.static(path.join(__dirname, "public"), { dotfiles: "deny", index: "index.html" }));
+// PWA: the service worker and manifest must always be revalidated so updates reach installed apps.
+app.use(express.static(path.join(__dirname, "public"), {
+  dotfiles: "deny",
+  index: "index.html",
+  setHeaders(res, filePath) {
+    const base = path.basename(filePath);
+    if (base === "sw.js") {
+      res.setHeader("Cache-Control", "no-cache");
+      res.setHeader("Service-Worker-Allowed", "/");
+    } else if (base === "manifest.webmanifest") {
+      res.setHeader("Content-Type", "application/manifest+json; charset=utf-8");
+      res.setHeader("Cache-Control", "no-cache");
+    }
+  },
+}));
 app.get("/{*path}", (_req, res) => res.sendFile(path.join(__dirname, "public", "index.html")));
 
 // Never leak stack traces or internal messages
